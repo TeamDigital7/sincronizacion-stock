@@ -3,12 +3,13 @@ from __future__ import annotations
 import pandas as pd
 
 DETAIL_COLUMNS = [
-    "sitio", "id_producto", "variant_sku", "conca", "talla", "codigo_tienda",
-    "id_tienda_forus", "stock_erp_sitio", "stock_disponible_ecommerce",
-    "diferencia_stock", "diferencia_absoluta", "estado_sincronizacion",
-    "presente_erp", "presente_ecommerce", "fecha_corte_erp",
-    "fecha_corte_ecommerce", "nombrebodega", "shopify_location_name",
-    "stock_seguridad_aplicado", "relacion_bodega_sitio_duplicada",
+    "sitio", "sitio_erp", "nombre_sitio_erp", "id_producto", "variant_sku",
+    "conca", "talla", "codigo_tienda", "id_tienda_forus", "stock_erp_sitio",
+    "stock_disponible_ecommerce", "diferencia_stock", "diferencia_absoluta",
+    "estado_sincronizacion", "presente_erp", "presente_ecommerce",
+    "fecha_corte_erp", "fecha_corte_ecommerce", "nombrebodega",
+    "shopify_location_name", "stock_seguridad_aplicado",
+    "relacion_bodega_sitio_duplicada",
 ]
 
 
@@ -87,4 +88,3 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
     rows = [aggregate(group, str(site)) for site, group in detail.groupby("sitio")]
     rows.append(aggregate(detail, "GLOBAL"))
     return pd.DataFrame(rows)
-

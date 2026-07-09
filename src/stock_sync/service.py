@@ -34,9 +34,40 @@ class StockReconciliationService:
             ecommerce_frames.append(frame)
             warnings.extend(f"{name}: {warning}" for warning in site_warnings)
         ecommerce = pd.concat(ecommerce_frames, ignore_index=True)
-        erp = BigQuerySource(
-            self.config.bigquery, self.config.service_account
-        ).fetch_erp_stock(names)
+        bigquery = BigQuerySource(self.config.bigquery, self.config.service_account)
+        site_mapping = dict(self.config.erp_site_to_shopify_site)
+        mapping_from_bigquery = bigquery.fetch_site_mapping()
+        if not mapping_from_bigquery.empty:
+            site_mapping.update(
+                dict(
+                    zip(
+                        mapping_from_bigquery["sitio_erp"].astype(str).str.strip(),
+                        mapping_from_bigquery["sitio_shopify"].astype(str).str.strip(),
+                    )
+                )
+            )
+        selected_shopify_sites = set(names)
+        erp_sites = [
+            erp_site
+            for erp_site, shopify_site in site_mapping.items()
+            if shopify_site in selected_shopify_sites
+        ]
+        if not erp_sites:
+            erp_sites = names
+            site_mapping.update({name: name for name in names})
+        erp = bigquery.fetch_erp_stock(erp_sites)
+        if not erp.empty:
+            erp["sitio_erp"] = erp["sitio"]
+            erp["sitio"] = erp["sitio_erp"].map(site_mapping).fillna(erp["sitio_erp"])
+            erp = erp[erp["sitio"].isin(selected_shopify_sites)]
+        unmapped_erp_sites = sorted(
+            set(erp.get("sitio_erp", pd.Series(dtype=str)).dropna().astype(str))
+            - set(site_mapping)
+        )
+        warnings.extend(
+            f"Sitio ERP sin homologación hacia Shopify: {site}"
+            for site in unmapped_erp_sites
+        )
         detail = reconcile(erp, ecommerce)
         summary = summarize(detail)
         return ReconciliationResult(
@@ -45,4 +76,3 @@ class StockReconciliationService:
             warnings=warnings,
             excel_bytes=build_excel(summary, detail),
         )
-

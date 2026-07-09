@@ -22,21 +22,66 @@ class BigQuerySource:
 
     def fetch_erp_stock(self, sites: list[str] | None = None) -> pd.DataFrame:
         c = self.config
+        enabled_sites = list(c.enabled_erp_site_ids)
         sql = f"""
         WITH warehouse_site AS (
           SELECT DISTINCT
-            TRIM(CAST(bs.sitio AS STRING)) AS sitio,
-            TRIM(CAST(bs.bodega AS STRING)) AS bodega
+            TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING)) AS sitio,
+            TRIM(CAST(bs.`{c.warehouse_sites_name_column}` AS STRING)) AS nombre_sitio_erp,
+            TRIM(bodega) AS bodega
           FROM `{c.warehouse_sites_table}` bs
-          WHERE bs.sitio IS NOT NULL AND bs.bodega IS NOT NULL
+          CROSS JOIN UNNEST(
+            SPLIT(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(CAST(bs.`{c.warehouse_sites_warehouses_column}` AS STRING), '[', ''),
+                    ']',
+                    ''
+                  ),
+                  '"',
+                  ''
+                ),
+                ' ',
+                ''
+              ),
+              ','
+            )
+          ) AS bodega
+          WHERE bs.`{c.warehouse_sites_site_column}` IS NOT NULL
+            AND bs.`{c.warehouse_sites_warehouses_column}` IS NOT NULL
+            AND TRIM(bodega) != ''
+            AND TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING))
+              IN UNNEST(@enabled_sites)
         ),
         duplicate_links AS (
           SELECT sitio, bodega, COUNT(*) AS source_rows
           FROM (
             SELECT
-              TRIM(CAST(sitio AS STRING)) AS sitio,
-              TRIM(CAST(bodega AS STRING)) AS bodega
-            FROM `{c.warehouse_sites_table}`
+              TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING)) AS sitio,
+              TRIM(bodega) AS bodega
+            FROM `{c.warehouse_sites_table}` bs
+            CROSS JOIN UNNEST(
+              SPLIT(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      REPLACE(CAST(bs.`{c.warehouse_sites_warehouses_column}` AS STRING), '[', ''),
+                      ']',
+                      ''
+                    ),
+                    '"',
+                    ''
+                  ),
+                  ' ',
+                  ''
+                ),
+                ','
+              )
+            ) AS bodega
+            WHERE TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING))
+              IN UNNEST(@enabled_sites)
+              AND TRIM(bodega) != ''
           )
           GROUP BY 1, 2
         ),
@@ -75,6 +120,7 @@ class BigQuerySource:
         )
         SELECT
           ws.sitio,
+          ws.nombre_sitio_erp,
           s.id_producto,
           s.codigo_tienda,
           s.conca,
@@ -104,6 +150,25 @@ class BigQuerySource:
             query_parameters=[
                 bigquery.ScalarQueryParameter("filter_sites", "BOOL", bool(sites)),
                 bigquery.ArrayQueryParameter("sites", "STRING", sites or []),
+                bigquery.ArrayQueryParameter("enabled_sites", "STRING", enabled_sites),
             ]
         )
         return self.client.query(sql, job_config=job_config).result().to_dataframe()
+
+    def fetch_site_mapping(self) -> pd.DataFrame:
+        c = self.config
+        if not (
+            c.site_mapping_table
+            and c.site_mapping_erp_column
+            and c.site_mapping_shopify_column
+        ):
+            return pd.DataFrame(columns=["sitio_erp", "sitio_shopify"])
+        sql = f"""
+        SELECT DISTINCT
+          TRIM(CAST(`{c.site_mapping_erp_column}` AS STRING)) AS sitio_erp,
+          TRIM(CAST(`{c.site_mapping_shopify_column}` AS STRING)) AS sitio_shopify
+        FROM `{c.site_mapping_table}`
+        WHERE `{c.site_mapping_erp_column}` IS NOT NULL
+          AND `{c.site_mapping_shopify_column}` IS NOT NULL
+        """
+        return self.client.query(sql).result().to_dataframe()
