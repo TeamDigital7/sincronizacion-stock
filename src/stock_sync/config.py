@@ -23,6 +23,12 @@ def _table(value: str, key: str) -> str:
     return value
 
 
+def _required(mapping: Mapping[str, Any], key: str, section: str) -> Any:
+    if key not in mapping or mapping[key] in (None, ""):
+        raise ValueError(f"Falta [{section}].{key} en secrets.toml")
+    return mapping[key]
+
+
 def _column(value: str | None, key: str) -> str | None:
     if value is None or str(value).strip() == "":
         return None
@@ -37,12 +43,15 @@ class BigQueryConfig:
     project_id: str
     job_project_id: str
     location: str
-    stock_table: str
-    warehouses_table: str
-    warehouse_sites_table: str
+    mode: str = "query"
+    erp_snapshot_table: str | None = None
+    stock_table: str | None = None
+    warehouses_table: str | None = None
+    warehouse_sites_table: str | None = None
     warehouse_sites_site_column: str = "idsitio"
-    warehouse_sites_name_column: str = "nombre"
-    warehouse_sites_warehouses_column: str = "bodegas"
+    warehouse_sites_name_column: str | None = None
+    warehouse_sites_warehouse_column: str | None = None
+    warehouse_sites_warehouses_column: str | None = "bodegas"
     enabled_erp_site_ids: tuple[str, ...] = ("2", "4", "6", "24", "102", "103")
     site_mapping_table: str | None = None
     site_mapping_erp_column: str | None = None
@@ -71,15 +80,60 @@ class AppConfig:
     def from_mapping(cls, source: Mapping[str, Any]) -> "AppConfig":
         data = _plain(source)
         bq = data["bigquery"]
+        mode = str(bq.get("mode", "query")).strip().lower()
+        if mode not in {"query", "snapshot"}:
+            raise ValueError("[bigquery].mode debe ser 'query' o 'snapshot'")
+        stock_table = bq.get("stock_table", bq.get("table"))
+        erp_snapshot_table = bq.get("erp_snapshot_table", bq.get("snapshot_table"))
         bigquery = BigQueryConfig(
             project_id=str(bq["project_id"]),
             job_project_id=str(bq.get("job_project_id", bq["project_id"])),
             location=str(bq.get("location", "US")),
-            stock_table=_table(bq["stock_table"], "stock_table"),
-            warehouses_table=_table(bq["warehouses_table"], "warehouses_table"),
-            warehouse_sites_table=_table(
-                bq.get("warehouse_sites_table", bq.get("sites_table")),
-                "warehouse_sites_table",
+            mode=mode,
+            erp_snapshot_table=(
+                _table(
+                    _required(
+                        {"erp_snapshot_table": erp_snapshot_table},
+                        "erp_snapshot_table",
+                        "bigquery",
+                    ),
+                    "erp_snapshot_table",
+                )
+                if mode == "snapshot"
+                else (_table(erp_snapshot_table, "erp_snapshot_table") if erp_snapshot_table else None)
+            ),
+            stock_table=(
+                _table(_required({"stock_table": stock_table}, "stock_table", "bigquery"), "stock_table")
+                if mode == "query"
+                else (_table(stock_table, "stock_table") if stock_table else None)
+            ),
+            warehouses_table=(
+                _table(_required(bq, "warehouses_table", "bigquery"), "warehouses_table")
+                if mode == "query"
+                else (_table(bq["warehouses_table"], "warehouses_table") if bq.get("warehouses_table") else None)
+            ),
+            warehouse_sites_table=(
+                _table(
+                    _required(
+                        {
+                            "warehouse_sites_table": bq.get(
+                                "warehouse_sites_table", bq.get("sites_table")
+                            )
+                        },
+                        "warehouse_sites_table",
+                        "bigquery",
+                    ),
+                    "warehouse_sites_table",
+                )
+                if mode == "query"
+                else (
+                    _table(
+                        bq.get("warehouse_sites_table", bq.get("sites_table")),
+                        "warehouse_sites_table",
+                    )
+                    if bq.get("warehouse_sites_table", bq.get("sites_table"))
+                    else None
+                )
             ),
             warehouse_sites_site_column=_column(
                 bq.get("warehouse_sites_site_column", "idsitio"),
@@ -87,15 +141,17 @@ class AppConfig:
             )
             or "idsitio",
             warehouse_sites_name_column=_column(
-                bq.get("warehouse_sites_name_column", "nombre"),
+                bq.get("warehouse_sites_name_column"),
                 "warehouse_sites_name_column",
-            )
-            or "nombre",
+            ),
+            warehouse_sites_warehouse_column=_column(
+                bq.get("warehouse_sites_warehouse_column"),
+                "warehouse_sites_warehouse_column",
+            ),
             warehouse_sites_warehouses_column=_column(
                 bq.get("warehouse_sites_warehouses_column", "bodegas"),
                 "warehouse_sites_warehouses_column",
-            )
-            or "bodegas",
+            ),
             enabled_erp_site_ids=tuple(
                 str(value).strip()
                 for value in bq.get(

@@ -20,69 +20,33 @@ class BigQuerySource:
             location=config.location,
         )
 
+    def fetch_erp_snapshot(self, sites: list[str] | None = None) -> pd.DataFrame:
+        if not self.config.erp_snapshot_table:
+            raise ValueError("Falta [bigquery].erp_snapshot_table para mode = 'snapshot'")
+        table = self.client.get_table(self.config.erp_snapshot_table)
+        rows = self.client.list_rows(table)
+        frame = pd.DataFrame([dict(row.items()) for row in rows])
+        if frame.empty:
+            return self._empty_erp_frame()
+        if "sitio" not in frame.columns:
+            raise ValueError("La tabla snapshot debe incluir la columna sitio")
+        frame["sitio"] = frame["sitio"].astype("string").str.strip()
+        if sites:
+            normalized_sites = {str(site).strip() for site in sites}
+            frame = frame[frame["sitio"].isin(normalized_sites)]
+        return frame
+
     def fetch_erp_stock(self, sites: list[str] | None = None) -> pd.DataFrame:
+        if self.config.mode == "snapshot":
+            return self.fetch_erp_snapshot(sites)
         c = self.config
         enabled_sites = list(c.enabled_erp_site_ids)
+        warehouse_site_cte = self._warehouse_site_cte()
         sql = f"""
-        WITH warehouse_site AS (
-          SELECT DISTINCT
-            TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING)) AS sitio,
-            TRIM(CAST(bs.`{c.warehouse_sites_name_column}` AS STRING)) AS nombre_sitio_erp,
-            TRIM(bodega) AS bodega
-          FROM `{c.warehouse_sites_table}` bs
-          CROSS JOIN UNNEST(
-            SPLIT(
-              REPLACE(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(CAST(bs.`{c.warehouse_sites_warehouses_column}` AS STRING), '[', ''),
-                    ']',
-                    ''
-                  ),
-                  '"',
-                  ''
-                ),
-                ' ',
-                ''
-              ),
-              ','
-            )
-          ) AS bodega
-          WHERE bs.`{c.warehouse_sites_site_column}` IS NOT NULL
-            AND bs.`{c.warehouse_sites_warehouses_column}` IS NOT NULL
-            AND TRIM(bodega) != ''
-            AND TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING))
-              IN UNNEST(@enabled_sites)
-        ),
+        WITH {warehouse_site_cte},
         duplicate_links AS (
           SELECT sitio, bodega, COUNT(*) AS source_rows
-          FROM (
-            SELECT
-              TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING)) AS sitio,
-              TRIM(bodega) AS bodega
-            FROM `{c.warehouse_sites_table}` bs
-            CROSS JOIN UNNEST(
-              SPLIT(
-                REPLACE(
-                  REPLACE(
-                    REPLACE(
-                      REPLACE(CAST(bs.`{c.warehouse_sites_warehouses_column}` AS STRING), '[', ''),
-                      ']',
-                      ''
-                    ),
-                    '"',
-                    ''
-                  ),
-                  ' ',
-                  ''
-                ),
-                ','
-              )
-            ) AS bodega
-            WHERE TRIM(CAST(bs.`{c.warehouse_sites_site_column}` AS STRING))
-              IN UNNEST(@enabled_sites)
-              AND TRIM(bodega) != ''
-          )
+          FROM warehouse_site_raw
           GROUP BY 1, 2
         ),
         active_warehouses AS (
@@ -154,6 +118,86 @@ class BigQuerySource:
             ]
         )
         return self.client.query(sql, job_config=job_config).result().to_dataframe()
+
+    @staticmethod
+    def _empty_erp_frame() -> pd.DataFrame:
+        return pd.DataFrame(
+            columns=[
+                "sitio",
+                "sitio_erp",
+                "nombre_sitio_erp",
+                "id_producto",
+                "codigo_tienda",
+                "conca",
+                "talla",
+                "fecha_corte_erp",
+                "nombrebodega",
+                "stock_seguridad_aplicado",
+                "stock_erp_sitio",
+                "relacion_bodega_sitio_duplicada",
+            ]
+        )
+
+    def _warehouse_site_cte(self) -> str:
+        c = self.config
+        site = c.warehouse_sites_site_column
+        name_expr = (
+            f"TRIM(CAST(bs.`{c.warehouse_sites_name_column}` AS STRING))"
+            if c.warehouse_sites_name_column
+            else "CAST(NULL AS STRING)"
+        )
+        if c.warehouse_sites_warehouse_column:
+            warehouse = c.warehouse_sites_warehouse_column
+            raw = f"""
+        warehouse_site_raw AS (
+          SELECT
+            TRIM(CAST(bs.`{site}` AS STRING)) AS sitio,
+            {name_expr} AS nombre_sitio_erp,
+            TRIM(CAST(bs.`{warehouse}` AS STRING)) AS bodega
+          FROM `{c.warehouse_sites_table}` bs
+          WHERE bs.`{site}` IS NOT NULL
+            AND bs.`{warehouse}` IS NOT NULL
+            AND TRIM(CAST(bs.`{warehouse}` AS STRING)) != ''
+            AND TRIM(CAST(bs.`{site}` AS STRING)) IN UNNEST(@enabled_sites)
+        )"""
+        else:
+            warehouses = c.warehouse_sites_warehouses_column
+            raw = f"""
+        warehouse_site_raw AS (
+          SELECT
+            TRIM(CAST(bs.`{site}` AS STRING)) AS sitio,
+            {name_expr} AS nombre_sitio_erp,
+            TRIM(bodega) AS bodega
+          FROM `{c.warehouse_sites_table}` bs
+          CROSS JOIN UNNEST(
+            SPLIT(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(CAST(bs.`{warehouses}` AS STRING), '[', ''),
+                    ']',
+                    ''
+                  ),
+                  '"',
+                  ''
+                ),
+                ' ',
+                ''
+              ),
+              ','
+            )
+          ) AS bodega
+          WHERE bs.`{site}` IS NOT NULL
+            AND bs.`{warehouses}` IS NOT NULL
+            AND TRIM(bodega) != ''
+            AND TRIM(CAST(bs.`{site}` AS STRING)) IN UNNEST(@enabled_sites)
+        )"""
+        return f"""
+        {raw},
+        warehouse_site AS (
+          SELECT DISTINCT sitio, nombre_sitio_erp, bodega
+          FROM warehouse_site_raw
+        )"""
 
     def fetch_site_mapping(self) -> pd.DataFrame:
         c = self.config

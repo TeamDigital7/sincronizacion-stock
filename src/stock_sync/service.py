@@ -36,7 +36,9 @@ class StockReconciliationService:
         ecommerce = pd.concat(ecommerce_frames, ignore_index=True)
         bigquery = BigQuerySource(self.config.bigquery, self.config.service_account)
         site_mapping = dict(self.config.erp_site_to_shopify_site)
-        mapping_from_bigquery = bigquery.fetch_site_mapping()
+        mapping_from_bigquery = pd.DataFrame()
+        if self.config.bigquery.mode != "snapshot":
+            mapping_from_bigquery = bigquery.fetch_site_mapping()
         if not mapping_from_bigquery.empty:
             site_mapping.update(
                 dict(

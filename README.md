@@ -43,6 +43,25 @@ necesarios para un token ya emitido. El token requiere `read_inventory`.
 streamlit run app.py
 ```
 
+## Modo sin BigQuery Job User
+
+Si la cuenta de servicio de Streamlit solo tiene permisos de lectura (`BigQuery Data
+Viewer`) y no puede crear jobs, configure la app en modo snapshot:
+
+```toml
+[bigquery]
+mode = "snapshot"
+erp_snapshot_table = "proyecto.dataset.stock_sync_erp_snapshot"
+```
+
+En este modo la app lee una tabla fisica con `list_rows` y no ejecuta `SELECT`.
+La tabla snapshot debe ser creada previamente por un proceso que si tenga permisos
+para ejecutar jobs. Use `sql/create_erp_stock_snapshot.sql` como plantilla.
+
+La cuenta de servicio de Streamlit solo necesita poder leer la tabla snapshot.
+No use una view como snapshot, porque consultar una view tambien requiere ejecutar
+un job en BigQuery.
+
 ## Pruebas
 
 ```powershell
