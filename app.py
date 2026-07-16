@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hmac
 
+import pandas as pd
 import streamlit as st
 
 from stock_sync import StockReconciliationService
@@ -29,6 +30,12 @@ def authenticated() -> bool:
     return False
 
 
+def read_uploaded_snapshot(uploaded) -> pd.DataFrame:
+    if uploaded.name.lower().endswith(".csv"):
+        return pd.read_csv(uploaded, dtype=str)
+    return pd.read_excel(uploaded, dtype=str)
+
+
 if authenticated():
     st.title("Conciliación ERP ↔ Shopify")
     try:
@@ -42,10 +49,39 @@ if authenticated():
         options=list(config.shopify_sites),
         default=list(config.shopify_sites),
     )
+
+    erp_snapshot = None
+    if config.bigquery.mode == "uploaded_snapshot":
+        st.info(
+            "Modo snapshot cargado: sube un CSV/XLSX con el stock ERP ya calculado. "
+            "La app no consultará BigQuery."
+        )
+        uploaded = st.file_uploader(
+            "Archivo ERP snapshot",
+            type=["csv", "xlsx", "xls"],
+        )
+        if uploaded is not None:
+            erp_snapshot = read_uploaded_snapshot(uploaded)
+            required_columns = {"sitio", "id_producto", "codigo_tienda", "stock_erp_sitio"}
+            missing = required_columns - set(erp_snapshot.columns)
+            if missing:
+                st.error(
+                    "El archivo ERP snapshot no tiene estas columnas obligatorias: "
+                    + ", ".join(sorted(missing))
+                )
+                st.stop()
+            st.success(f"Archivo cargado: {len(erp_snapshot):,} filas")
+
     if st.button("Ejecutar conciliación", type="primary", disabled=not sites):
-        with st.spinner("Consultando BigQuery y Shopify…"):
+        if config.bigquery.mode == "uploaded_snapshot" and erp_snapshot is None:
+            st.error("Debes subir el archivo ERP snapshot antes de ejecutar.")
+            st.stop()
+        with st.spinner("Consultando fuentes y Shopify…"):
             try:
-                result = StockReconciliationService(config).run(sites)
+                result = StockReconciliationService(config).run(
+                    sites,
+                    erp_snapshot=erp_snapshot,
+                )
             except Exception as exc:
                 st.exception(exc)
                 st.stop()
@@ -68,4 +104,3 @@ if authenticated():
         if result.warnings:
             with st.expander(f"Advertencias ({len(result.warnings)})"):
                 st.write("\n".join(f"- {warning}" for warning in result.warnings))
-

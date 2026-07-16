@@ -45,6 +45,22 @@ streamlit run app.py
 
 ## Modo sin BigQuery Job User
 
+Para una prueba temporal sin crear tablas en BigQuery, use carga manual:
+
+```toml
+[bigquery]
+mode = "uploaded_snapshot"
+```
+
+La interfaz pedira un CSV/XLSX con al menos estas columnas:
+
+```text
+sitio
+id_producto
+codigo_tienda
+stock_erp_sitio
+```
+
 Si la cuenta de servicio de Streamlit solo tiene permisos de lectura (`BigQuery Data
 Viewer`) y no puede crear jobs, configure la app en modo snapshot:
 
