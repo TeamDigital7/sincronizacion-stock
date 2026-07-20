@@ -82,13 +82,9 @@ class AppConfig:
         bq = data["bigquery"]
         stock_table = bq.get("stock_table", bq.get("table"))
         erp_snapshot_table = bq.get("erp_snapshot_table", bq.get("snapshot_table"))
-        mode = str(
-            bq.get("mode") or ("snapshot" if erp_snapshot_table else "query")
-        ).strip().lower()
-        if mode not in {"query", "snapshot", "uploaded_snapshot"}:
-            raise ValueError(
-                "[bigquery].mode debe ser 'query', 'snapshot' o 'uploaded_snapshot'"
-            )
+        mode = str(bq.get("mode", "query")).strip().lower()
+        if mode not in {"query", "snapshot"}:
+            raise ValueError("[bigquery].mode debe ser 'query' o 'snapshot'")
         bigquery = BigQueryConfig(
             project_id=str(bq["project_id"]),
             job_project_id=str(bq.get("job_project_id", bq["project_id"])),

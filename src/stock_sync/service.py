@@ -23,11 +23,7 @@ class StockReconciliationService:
     def __init__(self, config: AppConfig):
         self.config = config
 
-    def run(
-        self,
-        selected_sites: list[str] | None = None,
-        erp_snapshot: pd.DataFrame | None = None,
-    ) -> ReconciliationResult:
+    def run(self, selected_sites: list[str] | None = None) -> ReconciliationResult:
         names = selected_sites or list(self.config.shopify_sites)
         ecommerce_frames = []
         warnings = []
@@ -39,33 +35,28 @@ class StockReconciliationService:
             warnings.extend(f"{name}: {warning}" for warning in site_warnings)
         ecommerce = pd.concat(ecommerce_frames, ignore_index=True)
         site_mapping = dict(self.config.erp_site_to_shopify_site)
+        bigquery = BigQuerySource(self.config.bigquery, self.config.service_account)
         mapping_from_bigquery = pd.DataFrame()
-        if self.config.bigquery.mode == "uploaded_snapshot":
-            if erp_snapshot is None:
-                raise ValueError("Debe subir un archivo ERP snapshot para este modo")
-            erp = erp_snapshot.copy()
-        else:
-            bigquery = BigQuerySource(self.config.bigquery, self.config.service_account)
-            if self.config.bigquery.mode != "snapshot":
-                mapping_from_bigquery = bigquery.fetch_site_mapping()
-            if not mapping_from_bigquery.empty:
-                site_mapping.update(
-                    dict(
-                        zip(
-                            mapping_from_bigquery["sitio_erp"].astype(str).str.strip(),
-                            mapping_from_bigquery["sitio_shopify"].astype(str).str.strip(),
-                        )
+        if self.config.bigquery.mode != "snapshot":
+            mapping_from_bigquery = bigquery.fetch_site_mapping()
+        if not mapping_from_bigquery.empty:
+            site_mapping.update(
+                dict(
+                    zip(
+                        mapping_from_bigquery["sitio_erp"].astype(str).str.strip(),
+                        mapping_from_bigquery["sitio_shopify"].astype(str).str.strip(),
                     )
                 )
-            erp_sites = [
-                erp_site
-                for erp_site, shopify_site in site_mapping.items()
-                if shopify_site in set(names)
-            ]
-            if not erp_sites:
-                erp_sites = names
-                site_mapping.update({name: name for name in names})
-            erp = bigquery.fetch_erp_stock(erp_sites)
+            )
+        erp_sites = [
+            erp_site
+            for erp_site, shopify_site in site_mapping.items()
+            if shopify_site in set(names)
+        ]
+        if not erp_sites:
+            erp_sites = names
+            site_mapping.update({name: name for name in names})
+        erp = bigquery.fetch_erp_stock(erp_sites)
         selected_shopify_sites = set(names)
         if not erp.empty:
             erp["sitio_erp"] = erp["sitio"]
