@@ -70,7 +70,8 @@ class StockReconciliationService:
             f"Sitio ERP sin homologación hacia Shopify: {site}"
             for site in unmapped_erp_sites
         )
-        detail = reconcile(erp, ecommerce)
+        detail, reconcile_warnings = reconcile(erp, ecommerce)
+        warnings.extend(reconcile_warnings)
         summary = summarize(detail)
         return ReconciliationResult(
             summary=summary,

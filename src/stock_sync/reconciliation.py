@@ -13,7 +13,7 @@ DETAIL_COLUMNS = [
 ]
 
 
-def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> pd.DataFrame:
+def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     erp = erp.copy()
     ecommerce = ecommerce.copy()
     for frame, columns in (
@@ -23,9 +23,32 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> pd.DataFrame:
         for column in columns:
             frame[column] = frame[column].astype("string").str.strip()
 
+    ecommerce = ecommerce.rename(columns={"stock_disponible": "stock_disponible_ecommerce"})
+
+    warnings: list[str] = []
+    key = ["sitio", "variant_sku", "id_tienda_forus"]
+    duplicated = ecommerce.duplicated(subset=key, keep=False)
+    if duplicated.any():
+        for (sitio, sku, tienda), _ in ecommerce[duplicated].groupby(key):
+            warnings.append(
+                f"{sitio}: SKU {sku} repetido en tienda {tienda} en Shopify; "
+                "stock sumado entre los duplicados"
+            )
+        agg = {
+            column: func
+            for column, func in {
+                "stock_disponible_ecommerce": "sum",
+                "fecha_corte_ecommerce": "max",
+                "shopify_location_id": "first",
+                "shopify_location_name": "first",
+                "tracked": "any",
+            }.items()
+            if column in ecommerce.columns
+        }
+        ecommerce = ecommerce.groupby(key, as_index=False).agg(agg)
+
     erp["_presente_erp"] = True
     ecommerce["_presente_ecommerce"] = True
-    ecommerce = ecommerce.rename(columns={"stock_disponible": "stock_disponible_ecommerce"})
     joined = erp.merge(
         ecommerce,
         how="outer",
@@ -59,11 +82,12 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> pd.DataFrame:
     for column in DETAIL_COLUMNS:
         if column not in joined:
             joined[column] = pd.NA
-    return joined[DETAIL_COLUMNS].sort_values(
+    detail = joined[DETAIL_COLUMNS].sort_values(
         ["sitio", "diferencia_absoluta", "id_producto"],
         ascending=[True, False, True],
         na_position="last",
     )
+    return detail, warnings
 
 
 def summarize(detail: pd.DataFrame) -> pd.DataFrame:
