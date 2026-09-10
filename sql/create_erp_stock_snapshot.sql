@@ -58,6 +58,7 @@ latest_stock AS (
     FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_central_stock_bi`
   )
   WHERE row_num = 1
+    AND EXTRACT(YEAR FROM fecha_corte) = EXTRACT(YEAR FROM CURRENT_DATE("America/Lima"))
 )
 SELECT
   ws.sitio,

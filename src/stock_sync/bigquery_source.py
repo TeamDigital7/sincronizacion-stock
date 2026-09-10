@@ -81,6 +81,7 @@ class BigQuerySource:
             FROM `{c.stock_table}`
           )
           WHERE row_num = 1
+            AND EXTRACT(YEAR FROM fecha_corte) = EXTRACT(YEAR FROM CURRENT_DATE("America/Lima"))
         )
         SELECT
           ws.sitio,

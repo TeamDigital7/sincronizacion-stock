@@ -5,7 +5,9 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 
 ## Reglas implementadas
 
-- Último registro ERP por `id_producto + codigo_tienda`.
+- Último registro ERP por `id_producto + codigo_tienda`, y solo si ese registro más
+  reciente pertenece al año actual (si el único dato disponible es del año pasado,
+  el SKU-bodega no se considera).
 - Relación confirmada `codigo_tienda = numbodega`.
 - Solo bodegas activas y asignadas al sitio.
 - Sitios ERP considerados: `2`, `4`, `6`, `24`, `102`, `103`.
