@@ -107,7 +107,7 @@ class BigQuerySource:
         FROM latest_stock s
         JOIN active_warehouses aw ON aw.bodega = s.codigo_tienda
         JOIN warehouse_site ws ON ws.bodega = aw.bodega
-        LEFT JOIN duplicate_links dl USING (sitio, bodega)
+        LEFT JOIN duplicate_links dl ON dl.sitio = ws.sitio AND dl.bodega = ws.bodega
         WHERE (NOT @filter_sites OR ws.sitio IN UNNEST(@sites))
         """
         job_config = bigquery.QueryJobConfig(
