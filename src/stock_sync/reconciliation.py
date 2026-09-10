@@ -13,6 +13,14 @@ DETAIL_COLUMNS = [
 ]
 
 
+def _normalize_key(series: pd.Series) -> pd.Series:
+    """Normaliza claves de cruce: castea a texto, recorta espacios y
+    quita el sufijo ".0" que deja BigQuery al convertir columnas
+    numéricas (FLOAT/NUMERIC) a STRING (ej. "5312506.0" -> "5312506")."""
+    normalized = series.astype("string").str.strip()
+    return normalized.str.replace(r"^(\d+)\.0$", r"\1", regex=True)
+
+
 def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     erp = erp.copy()
     ecommerce = ecommerce.copy()
@@ -21,7 +29,7 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
         (ecommerce, ["sitio", "variant_sku", "id_tienda_forus"]),
     ):
         for column in columns:
-            frame[column] = frame[column].astype("string").str.strip()
+            frame[column] = _normalize_key(frame[column])
 
     ecommerce = ecommerce.rename(columns={"stock_disponible": "stock_disponible_ecommerce"})
 

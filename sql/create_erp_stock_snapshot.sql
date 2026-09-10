@@ -11,7 +11,7 @@ WITH warehouse_site_raw AS (
     TRIM(CAST(bs.idsitio AS STRING)) AS sitio,
     CAST(NULL AS STRING) AS nombre_sitio_erp,
     TRIM(CAST(bs.bodega AS STRING)) AS bodega
-  FROM `forus-analitica-prod-datalake.bronze.stg_pe_ecommerce_cen_bodegas_sitios` bs
+  FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_ecommerce_cen_bodegas_sitios` bs
   WHERE bs.idsitio IS NOT NULL
     AND bs.bodega IS NOT NULL
     AND TRIM(CAST(bs.bodega AS STRING)) != ''
@@ -31,7 +31,7 @@ active_warehouses AS (
     TRIM(CAST(numbodega AS STRING)) AS bodega,
     ANY_VALUE(TRIM(CAST(nombrebodega AS STRING))) AS nombrebodega,
     MAX(COALESCE(SAFE_CAST(stock_seguridad AS NUMERIC), 0)) AS stock_seguridad
-  FROM `forus-analitica-prod-datalake.bronze.stg_pe_ecommerce_cen_bodegas_ecommerce`
+  FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_ecommerce_cen_bodegas_ecommerce`
   WHERE UPPER(TRIM(CAST(estado AS STRING))) = 'ACTIVO'
   GROUP BY 1
 ),
@@ -55,7 +55,7 @@ latest_stock AS (
                      TRIM(CAST(codigo_tienda AS STRING))
         ORDER BY fecha_corte DESC
       ) AS row_num
-    FROM `forus-analitica-prod-datalake.bronze.stg_pe_central_stock_bi`
+    FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_central_stock_bi`
   )
   WHERE row_num = 1
 )
