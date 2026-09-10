@@ -76,7 +76,16 @@ class BigQuerySource:
               ROW_NUMBER() OVER (
                 PARTITION BY TRIM(CAST(id_producto AS STRING)),
                              TRIM(CAST(codigo_tienda AS STRING))
-                ORDER BY fecha_corte DESC
+                ORDER BY
+                  fecha_corte DESC,
+                  (
+                    IF(stock_tiendas IS NULL, 0, 1)
+                    + IF(reserva_retail IS NULL, 0, 1)
+                    + IF(disponible IS NULL, 0, 1)
+                    + IF(reserva_ecommerce IS NULL, 0, 1)
+                    + IF(merma IS NULL, 0, 1)
+                    + IF(segunda IS NULL, 0, 1)
+                  ) DESC
               ) AS row_num
             FROM `{c.stock_table}`
           )
