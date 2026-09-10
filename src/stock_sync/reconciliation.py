@@ -68,9 +68,9 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
     joined["presente_ecommerce"] = (
         joined["_presente_ecommerce"].fillna(False).astype(bool)
     )
-    joined["stock_erp_sitio"] = joined["stock_erp_sitio"].fillna(0)
+    joined["stock_erp_sitio"] = joined["stock_erp_sitio"].fillna(0).astype(float)
     joined["stock_disponible_ecommerce"] = (
-        joined["stock_disponible_ecommerce"].fillna(0)
+        joined["stock_disponible_ecommerce"].fillna(0).astype(float)
     )
     joined["diferencia_stock"] = (
         joined["stock_erp_sitio"] - joined["stock_disponible_ecommerce"]
