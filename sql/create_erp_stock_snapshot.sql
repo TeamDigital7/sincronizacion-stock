@@ -32,7 +32,7 @@ active_warehouses AS (
     ANY_VALUE(TRIM(CAST(nombrebodega AS STRING))) AS nombrebodega,
     MAX(COALESCE(SAFE_CAST(stock_seguridad AS NUMERIC), 0)) AS stock_seguridad
   FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_ecommerce_cen_bodegas_ecommerce`
-  WHERE UPPER(TRIM(CAST(estado AS STRING))) = 'ACTIVO'
+  WHERE SAFE_CAST(estado AS INT64) = 1
   GROUP BY 1
 ),
 latest_stock AS (

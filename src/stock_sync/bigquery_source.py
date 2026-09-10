@@ -55,7 +55,7 @@ class BigQuerySource:
             ANY_VALUE(TRIM(CAST(nombrebodega AS STRING))) AS nombrebodega,
             MAX(COALESCE(SAFE_CAST(stock_seguridad AS NUMERIC), 0)) AS stock_seguridad
           FROM `{c.warehouses_table}`
-          WHERE UPPER(TRIM(CAST(estado AS STRING))) = 'ACTIVO'
+          WHERE SAFE_CAST(estado AS INT64) = 1
           GROUP BY 1
         ),
         latest_stock AS (
@@ -216,3 +216,31 @@ class BigQuerySource:
           AND `{c.site_mapping_shopify_column}` IS NOT NULL
         """
         return self.client.query(sql).result().to_dataframe()
+
+    def diagnostics(self) -> dict[str, pd.DataFrame]:
+        """Consultas de solo lectura para depurar por qué el cruce ERP viene vacío.
+        No modifica nada; solo cuenta filas y muestra valores distintos reales."""
+        c = self.config
+        site = c.warehouse_sites_site_column
+        results: dict[str, pd.DataFrame] = {}
+        results["stock_table_filas"] = self.client.query(
+            f"SELECT COUNT(*) AS filas FROM `{c.stock_table}`"
+        ).result().to_dataframe()
+        results["warehouses_estado"] = self.client.query(
+            f"""
+            SELECT estado, COUNT(*) AS filas
+            FROM `{c.warehouses_table}`
+            GROUP BY estado
+            ORDER BY filas DESC
+            """
+        ).result().to_dataframe()
+        results["sitios_disponibles"] = self.client.query(
+            f"""
+            SELECT `{site}` AS sitio, COUNT(*) AS filas
+            FROM `{c.warehouse_sites_table}`
+            GROUP BY sitio
+            ORDER BY filas DESC
+            LIMIT 50
+            """
+        ).result().to_dataframe()
+        return results

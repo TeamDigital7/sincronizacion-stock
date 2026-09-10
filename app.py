@@ -5,6 +5,7 @@ import hmac
 import streamlit as st
 
 from stock_sync import StockReconciliationService
+from stock_sync.bigquery_source import BigQuerySource
 from stock_sync.config import AppConfig
 
 st.set_page_config(page_title="Sincronización de stock", page_icon="📦", layout="wide")
@@ -69,3 +70,27 @@ if authenticated():
         if result.warnings:
             with st.expander(f"Advertencias ({len(result.warnings)})"):
                 st.write("\n".join(f"- {warning}" for warning in result.warnings))
+
+    with st.expander("🔧 Diagnóstico ERP (solo lectura)"):
+        st.caption(
+            "Consultas de conteo sobre las tablas configuradas en [bigquery], "
+            "para verificar rápidamente qué hay realmente en BigQuery."
+        )
+        if st.button("Ejecutar diagnóstico"):
+            with st.spinner("Consultando BigQuery…"):
+                try:
+                    diag = BigQuerySource(
+                        config.bigquery, config.service_account
+                    ).diagnostics()
+                except Exception as exc:
+                    st.exception(exc)
+                    st.stop()
+            st.write("Filas en `stock_table`:")
+            st.dataframe(diag["stock_table_filas"], hide_index=True)
+            st.write("Valores de `estado` en `warehouses_table`:")
+            st.dataframe(diag["warehouses_estado"], hide_index=True)
+            st.write(
+                f"Valores de `{config.bigquery.warehouse_sites_site_column}` "
+                "en `warehouse_sites_table`:"
+            )
+            st.dataframe(diag["sitios_disponibles"], hide_index=True)
