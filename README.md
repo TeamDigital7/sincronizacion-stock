@@ -17,6 +17,9 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 - Resultado mínimo cero y tolerancia de comparación igual a cero.
 - `FULL OUTER JOIN` para detectar registros exclusivos de ERP o Shopify.
 - Detección de relaciones bodega-sitio duplicadas.
+- Filtro de marca vía tabla maestra de productos (`product_master_table`), homologando
+  cada sitio Shopify a su marca ERP en `[site_mapping.shopify_to_brand]`.
+- Exclusión de tallas que empiezan con `K` o son exactamente `000`.
 
 ## Configuración
 

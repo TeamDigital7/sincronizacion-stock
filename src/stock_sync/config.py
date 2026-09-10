@@ -56,6 +56,10 @@ class BigQueryConfig:
     site_mapping_table: str | None = None
     site_mapping_erp_column: str | None = None
     site_mapping_shopify_column: str | None = None
+    product_master_table: str | None = None
+    product_master_id_column: str = "codint_ma"
+    product_master_brand_column: str = "marca_ma"
+    product_master_size_column: str = "talnum_ma"
 
 
 @dataclass(frozen=True)
@@ -73,6 +77,7 @@ class AppConfig:
     service_account: dict[str, Any]
     shopify_sites: dict[str, ShopifySiteConfig]
     erp_site_to_shopify_site: dict[str, str]
+    brand_by_shopify_site: dict[str, str]
     timezone: str = "America/Lima"
     daily_refresh_time: str = "08:00"
 
@@ -170,12 +175,38 @@ class AppConfig:
             site_mapping_shopify_column=_column(
                 bq.get("site_mapping_shopify_column"), "site_mapping_shopify_column"
             ),
+            product_master_table=(
+                _table(bq["product_master_table"], "product_master_table")
+                if bq.get("product_master_table")
+                else None
+            ),
+            product_master_id_column=_column(
+                bq.get("product_master_id_column", "codint_ma"),
+                "product_master_id_column",
+            )
+            or "codint_ma",
+            product_master_brand_column=_column(
+                bq.get("product_master_brand_column", "marca_ma"),
+                "product_master_brand_column",
+            )
+            or "marca_ma",
+            product_master_size_column=_column(
+                bq.get("product_master_size_column", "talnum_ma"),
+                "product_master_size_column",
+            )
+            or "talnum_ma",
         )
         configured_site_mapping = data.get("site_mapping", {}).get("erp_to_shopify", {})
         erp_site_to_shopify_site = {
             str(erp).strip(): str(shopify).strip()
             for erp, shopify in configured_site_mapping.items()
             if str(erp).strip() and str(shopify).strip()
+        }
+        configured_brand_mapping = data.get("site_mapping", {}).get("shopify_to_brand", {})
+        brand_by_shopify_site = {
+            str(shopify).strip(): str(brand).strip()
+            for shopify, brand in configured_brand_mapping.items()
+            if str(shopify).strip() and str(brand).strip()
         }
         sites = {}
         for name, raw in data.get("shopify_sites", {}).items():
@@ -197,6 +228,7 @@ class AppConfig:
             service_account=dict(data["gcp_service_account"]),
             shopify_sites=sites,
             erp_site_to_shopify_site=erp_site_to_shopify_site,
+            brand_by_shopify_site=brand_by_shopify_site,
             timezone=str(data.get("app", {}).get("timezone", "America/Lima")),
             daily_refresh_time=str(
                 data.get("app", {}).get("daily_refresh_time", "08:00")

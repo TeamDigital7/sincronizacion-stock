@@ -56,11 +56,17 @@ if authenticated():
     if result := st.session_state.get("result"):
         st.subheader("Resumen")
         st.dataframe(result.summary, use_container_width=True, hide_index=True)
-        st.subheader("Detalle desincronizado")
-        mismatches = result.detail[
-            result.detail["estado_sincronizacion"] != "SINCRONIZADO"
-        ]
-        st.dataframe(mismatches, use_container_width=True, hide_index=True)
+        mostrar_todo = st.checkbox(
+            "Mostrar todos los registros (sincronizados y desincronizados)"
+        )
+        st.subheader("Detalle completo" if mostrar_todo else "Detalle desincronizado")
+        if mostrar_todo:
+            tabla = result.detail
+        else:
+            tabla = result.detail[
+                result.detail["estado_sincronizacion"] != "SINCRONIZADO"
+            ]
+        st.dataframe(tabla, use_container_width=True, hide_index=True)
         st.download_button(
             "Descargar Excel",
             data=result.excel_bytes,

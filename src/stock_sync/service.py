@@ -56,7 +56,12 @@ class StockReconciliationService:
         if not erp_sites:
             erp_sites = names
             site_mapping.update({name: name for name in names})
-        erp = bigquery.fetch_erp_stock(erp_sites)
+        allowed_brands = [
+            self.config.brand_by_shopify_site[name]
+            for name in names
+            if name in self.config.brand_by_shopify_site
+        ]
+        erp = bigquery.fetch_erp_stock(erp_sites, allowed_brands=allowed_brands)
         selected_shopify_sites = set(names)
         if not erp.empty:
             erp["sitio_erp"] = erp["sitio"]

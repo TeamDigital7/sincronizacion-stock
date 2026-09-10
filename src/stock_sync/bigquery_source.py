@@ -36,12 +36,29 @@ class BigQuerySource:
             frame = frame[frame["sitio"].isin(normalized_sites)]
         return frame
 
-    def fetch_erp_stock(self, sites: list[str] | None = None) -> pd.DataFrame:
+    def fetch_erp_stock(
+        self,
+        sites: list[str] | None = None,
+        allowed_brands: list[str] | None = None,
+    ) -> pd.DataFrame:
         if self.config.mode == "snapshot":
             return self.fetch_erp_snapshot(sites)
         c = self.config
         enabled_sites = list(c.enabled_erp_site_ids)
+        brands = sorted({str(b).strip().upper() for b in (allowed_brands or []) if str(b).strip()})
         warehouse_site_cte = self._warehouse_site_cte()
+        product_master_join = ""
+        product_master_filter = ""
+        if c.product_master_table:
+            product_master_join = f"""
+        JOIN `{c.product_master_table}` pm
+          ON TRIM(CAST(pm.{c.product_master_id_column} AS STRING)) = s.id_producto"""
+            product_master_filter = f"""
+          AND (NOT @filter_brands OR UPPER(TRIM(pm.{c.product_master_brand_column})) IN UNNEST(@brands))
+          AND NOT (
+            UPPER(TRIM(pm.{c.product_master_size_column})) LIKE 'K%'
+            OR TRIM(pm.{c.product_master_size_column}) = '000'
+          )"""
         sql = f"""
         WITH {warehouse_site_cte},
         duplicate_links AS (
@@ -118,14 +135,22 @@ class BigQuerySource:
         JOIN active_warehouses aw ON aw.bodega = s.codigo_tienda
         JOIN warehouse_site ws ON ws.bodega = aw.bodega
         LEFT JOIN duplicate_links dl ON dl.sitio = ws.sitio AND dl.bodega = ws.bodega
+        {product_master_join}
         WHERE (NOT @filter_sites OR ws.sitio IN UNNEST(@sites))
+        {product_master_filter}
         """
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ScalarQueryParameter("filter_sites", "BOOL", bool(sites)),
-                bigquery.ArrayQueryParameter("sites", "STRING", sites or []),
-                bigquery.ArrayQueryParameter("enabled_sites", "STRING", enabled_sites),
+        query_parameters = [
+            bigquery.ScalarQueryParameter("filter_sites", "BOOL", bool(sites)),
+            bigquery.ArrayQueryParameter("sites", "STRING", sites or []),
+            bigquery.ArrayQueryParameter("enabled_sites", "STRING", enabled_sites),
+        ]
+        if c.product_master_table:
+            query_parameters += [
+                bigquery.ScalarQueryParameter("filter_brands", "BOOL", bool(brands)),
+                bigquery.ArrayQueryParameter("brands", "STRING", brands),
             ]
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=query_parameters
         )
         return self.client.query(sql, job_config=job_config).result().to_dataframe()
 

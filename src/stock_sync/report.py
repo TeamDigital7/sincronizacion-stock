@@ -13,6 +13,7 @@ def build_excel(summary: pd.DataFrame, detail: pd.DataFrame) -> bytes:
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
         summary.to_excel(writer, sheet_name="Resumen", index=False)
         mismatches.to_excel(writer, sheet_name="Detalle", index=False)
+        detail.to_excel(writer, sheet_name="Detalle completo", index=False)
         for sheet in writer.book.worksheets:
             sheet.freeze_panes = "A2"
             sheet.auto_filter.ref = sheet.dimensions
