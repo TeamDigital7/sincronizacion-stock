@@ -77,7 +77,7 @@ class AppConfig:
     service_account: dict[str, Any]
     shopify_sites: dict[str, ShopifySiteConfig]
     erp_site_to_shopify_site: dict[str, str]
-    brand_by_shopify_site: dict[str, str]
+    brand_by_shopify_site: dict[str, tuple[str, ...]]
     timezone: str = "America/Lima"
     daily_refresh_time: str = "08:00"
 
@@ -203,11 +203,17 @@ class AppConfig:
             if str(erp).strip() and str(shopify).strip()
         }
         configured_brand_mapping = data.get("site_mapping", {}).get("shopify_to_brand", {})
-        brand_by_shopify_site = {
-            str(shopify).strip(): str(brand).strip()
-            for shopify, brand in configured_brand_mapping.items()
-            if str(shopify).strip() and str(brand).strip()
-        }
+        brand_by_shopify_site: dict[str, tuple[str, ...]] = {}
+        for shopify, brands in configured_brand_mapping.items():
+            shopify_key = str(shopify).strip()
+            if not shopify_key:
+                continue
+            raw_brands = brands if isinstance(brands, (list, tuple)) else [brands]
+            values = tuple(
+                str(brand).strip() for brand in raw_brands if str(brand).strip()
+            )
+            if values:
+                brand_by_shopify_site[shopify_key] = values
         sites = {}
         for name, raw in data.get("shopify_sites", {}).items():
             mapping = {

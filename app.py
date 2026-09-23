@@ -100,3 +100,9 @@ if authenticated():
                 "en `warehouse_sites_table`:"
             )
             st.dataframe(diag["sitios_disponibles"], hide_index=True)
+            if "marcas_disponibles" in diag:
+                st.write(
+                    f"Valores de `{config.bigquery.product_master_brand_column}` "
+                    "en `product_master_table`:"
+                )
+                st.dataframe(diag["marcas_disponibles"], hide_index=True)

@@ -278,4 +278,14 @@ class BigQuerySource:
             LIMIT 50
             """
         ).result().to_dataframe()
+        if c.product_master_table:
+            results["marcas_disponibles"] = self.client.query(
+                f"""
+                SELECT `{c.product_master_brand_column}` AS marca, COUNT(*) AS filas
+                FROM `{c.product_master_table}`
+                GROUP BY marca
+                ORDER BY filas DESC
+                LIMIT 100
+                """
+            ).result().to_dataframe()
         return results

@@ -18,7 +18,8 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 - `FULL OUTER JOIN` para detectar registros exclusivos de ERP o Shopify.
 - Detección de relaciones bodega-sitio duplicadas.
 - Filtro de marca vía tabla maestra de productos (`product_master_table`), homologando
-  cada sitio Shopify a su marca ERP en `[site_mapping.shopify_to_brand]`.
+  cada sitio Shopify a una o varias marcas ERP en `[site_mapping.shopify_to_brand]`
+  (útil cuando un mismo sitio, como Rockford, vende más de una marca).
 - Exclusión de tallas que empiezan con `K` o son exactamente `000`.
 
 ## Configuración
