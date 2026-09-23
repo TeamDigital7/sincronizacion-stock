@@ -16,6 +16,13 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 - Stock de seguridad descontado por SKU-bodega cuando el stock base es positivo.
 - Resultado mínimo cero y tolerancia de comparación igual a cero.
 - `FULL OUTER JOIN` para detectar registros exclusivos de ERP o Shopify.
+- Estados de conciliación:
+  - `SINCRONIZADO`: mismo stock en ambos lados, o el SKU no existe en el ERP pero
+    Shopify tampoco reporta stock real (0) — no hay nada que reconciliar.
+  - `DIFERENCIA_STOCK`: existe en ambos lados con stock distinto.
+  - `NO_CREADO`: existe en el ERP pero no está creado en Shopify.
+  - `SIN_DATA_ERP`: Shopify reporta stock (> 0) para un SKU que no aparece en la
+    tabla de stock del ERP — no se puede confirmar contra el ERP.
 - Detección de relaciones bodega-sitio duplicadas.
 - Filtro de marca vía tabla maestra de productos (`product_master_table`), homologando
   cada sitio Shopify a una o varias marcas ERP en `[site_mapping.shopify_to_brand]`

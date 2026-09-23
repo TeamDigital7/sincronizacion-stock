@@ -79,9 +79,14 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
 
     def status(row: pd.Series) -> str:
         if not row["presente_erp"]:
-            return "SOLO_ECOMMERCE"
+            # No existe en la tabla de stock del ERP. Si Shopify tampoco reporta
+            # stock real (0), no hay nada que reconciliar: se considera sincronizado.
+            # Si Shopify sí reporta stock, el ERP no puede confirmarlo: falta data ERP.
+            if row["stock_disponible_ecommerce"] == 0:
+                return "SINCRONIZADO"
+            return "SIN_DATA_ERP"
         if not row["presente_ecommerce"]:
-            return "SOLO_ERP"
+            return "NO_CREADO"
         if row["diferencia_stock"] != 0:
             return "DIFERENCIA_STOCK"
         return "SINCRONIZADO"
@@ -110,9 +115,9 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
             "porcentaje_desincronizacion": round(100 * mismatch.mean(), 2) if len(group) else 0,
             "skus_unicos": int(skus.nunique()),
             "skus_unicos_desincronizados": int(mismatch_skus.nunique()),
-            "solo_erp": int((group["estado_sincronizacion"] == "SOLO_ERP").sum()),
-            "solo_ecommerce": int(
-                (group["estado_sincronizacion"] == "SOLO_ECOMMERCE").sum()
+            "no_creado": int((group["estado_sincronizacion"] == "NO_CREADO").sum()),
+            "sin_data_erp": int(
+                (group["estado_sincronizacion"] == "SIN_DATA_ERP").sum()
             ),
             "diferencia_absoluta_unidades": float(group["diferencia_absoluta"].sum()),
         }

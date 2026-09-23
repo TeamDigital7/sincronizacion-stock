@@ -34,6 +34,12 @@ def test_reconcile_full_outer_and_zero_tolerance():
                 "id_tienda_forus": "001",
                 "stock_disponible": 4,
             },
+            {
+                "sitio": "columbia",
+                "variant_sku": "SKU4",
+                "id_tienda_forus": "001",
+                "stock_disponible": 0,
+            },
         ]
     )
     detail, warnings = reconcile(erp, ecommerce)
@@ -43,11 +49,12 @@ def test_reconcile_full_outer_and_zero_tolerance():
     )
     assert statuses == {
         "SKU1": "DIFERENCIA_STOCK",
-        "SKU2": "SOLO_ERP",
-        "SKU3": "SOLO_ECOMMERCE",
+        "SKU2": "NO_CREADO",
+        "SKU3": "SIN_DATA_ERP",
+        "SKU4": "SINCRONIZADO",
     }
     summary = summarize(detail)
-    assert summary.iloc[-1]["porcentaje_desincronizacion"] == 100
+    assert summary.iloc[-1]["porcentaje_desincronizacion"] == 75.0
 
 
 def test_reconcile_sums_duplicate_ecommerce_sku_instead_of_failing():
