@@ -16,6 +16,7 @@ query InventoryItems($cursor: String) {
     nodes {
       sku
       tracked
+      variant { id }
       inventoryLevels(first: 250) {
         pageInfo { hasNextPage }
         nodes {
@@ -79,6 +80,10 @@ class ShopifySource:
                 sku = (item.get("sku") or "").strip()
                 if not sku:
                     continue
+                variant = item.get("variant") or {}
+                variant_id = (
+                    normalize_location_id(variant["id"]) if variant.get("id") else None
+                )
                 levels = item["inventoryLevels"]
                 if levels["pageInfo"]["hasNextPage"]:
                     warnings.append(f"{sku}: más de 250 ubicaciones; resultado incompleto")
@@ -102,6 +107,7 @@ class ShopifySource:
                             "fecha_corte_ecommerce": available.get("updatedAt") or fetched_at,
                             "shopify_location_id": location_id,
                             "shopify_location_name": location["name"],
+                            "shopify_variant_id": variant_id,
                             "tracked": bool(item.get("tracked")),
                         }
                     )
@@ -119,6 +125,7 @@ class ShopifySource:
                 "fecha_corte_ecommerce",
                 "shopify_location_id",
                 "shopify_location_name",
+                "shopify_variant_id",
                 "tracked",
             ],
         )

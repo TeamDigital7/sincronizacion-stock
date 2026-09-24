@@ -8,9 +8,13 @@ DETAIL_COLUMNS = [
     "stock_disponible_ecommerce", "diferencia_stock", "diferencia_absoluta",
     "estado_sincronizacion", "presente_erp", "presente_ecommerce",
     "fecha_corte_erp", "fecha_corte_ecommerce", "nombrebodega",
-    "shopify_location_name", "stock_seguridad_aplicado",
+    "shopify_location_name", "shopify_variant_id", "stock_seguridad_aplicado",
     "relacion_bodega_sitio_duplicada",
 ]
+
+
+def _join_unique(values: pd.Series) -> str:
+    return ", ".join(sorted({str(v) for v in values.dropna()}))
 
 
 def _normalize_key(series: pd.Series) -> pd.Series:
@@ -37,9 +41,15 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
     key = ["sitio", "variant_sku", "id_tienda_forus"]
     duplicated = ecommerce.duplicated(subset=key, keep=False)
     if duplicated.any():
-        for (sitio, sku, tienda), _ in ecommerce[duplicated].groupby(key):
+        for (sitio, sku, tienda), group in ecommerce[duplicated].groupby(key):
+            variant_ids = (
+                _join_unique(group["shopify_variant_id"])
+                if "shopify_variant_id" in group.columns
+                else ""
+            )
+            detalle_variantes = f" (variant IDs: {variant_ids})" if variant_ids else ""
             warnings.append(
-                f"{sitio}: SKU {sku} repetido en tienda {tienda} en Shopify; "
+                f"{sitio}: SKU {sku} repetido en tienda {tienda} en Shopify{detalle_variantes}; "
                 "stock sumado entre los duplicados"
             )
         agg = {
@@ -49,6 +59,7 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
                 "fecha_corte_ecommerce": "max",
                 "shopify_location_id": "first",
                 "shopify_location_name": "first",
+                "shopify_variant_id": _join_unique,
                 "tracked": "any",
             }.items()
             if column in ecommerce.columns

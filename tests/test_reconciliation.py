@@ -75,19 +75,23 @@ def test_reconcile_sums_duplicate_ecommerce_sku_instead_of_failing():
                 "variant_sku": "SKU1",
                 "id_tienda_forus": "001",
                 "stock_disponible": 2,
+                "shopify_variant_id": "111",
             },
             {
                 "sitio": "columbia",
                 "variant_sku": "SKU1",
                 "id_tienda_forus": "001",
                 "stock_disponible": 3,
+                "shopify_variant_id": "222",
             },
         ]
     )
     detail, warnings = reconcile(erp, ecommerce)
     assert len(warnings) == 1
     assert "SKU1" in warnings[0]
+    assert "111" in warnings[0] and "222" in warnings[0]
     row = detail.iloc[0]
+    assert row["shopify_variant_id"] == "111, 222"
     assert row["stock_disponible_ecommerce"] == 5
     assert row["estado_sincronizacion"] == "SINCRONIZADO"
 
