@@ -5,9 +5,11 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 
 ## Reglas implementadas
 
-- Último registro ERP por `id_producto + codigo_tienda`, y solo si ese registro más
-  reciente pertenece al año actual (si el único dato disponible es del año pasado,
-  el SKU-bodega no se considera).
+- Último registro ERP por `id_producto + codigo_tienda`, considerando exclusivamente
+  la fecha de cierre del día anterior en `America/Lima`. Si esa fecha no existe, la
+  corrida se detiene antes de consultar Shopify; la foto del año anterior se excluye.
+- Antes de seleccionar el último registro, solo se consideran filas con `transito = 0`;
+  los valores nulos o mayores a cero se excluyen.
 - Relación confirmada `codigo_tienda = numbodega`.
 - Solo bodegas activas y asignadas al sitio.
 - Sitios ERP considerados: `2`, `4`, `6`, `24`, `102`, `103`.
@@ -44,6 +46,7 @@ warehouses_table = "forus-analitica-prod-datalake.pe_bronze.stg_pe_ecommerce_cen
 warehouse_sites_table = "forus-analitica-prod-datalake.pe_bronze.stg_pe_ecommerce_cen_bodegas_sitios"
 warehouse_sites_site_column = "idsitio"
 warehouse_sites_warehouse_column = "bodega"
+stock_transit_column = "transito"
 enabled_erp_site_ids = ["2", "4", "6", "24", "102", "103"]
 ```
 
@@ -82,6 +85,13 @@ streamlit run app.py
 
 La zona horaria operativa es `America/Lima` (UTC-5). La actualización diaria debe
 ejecutarse a las `08:00`, equivalente a `13:00 UTC` (`0 13 * * *`).
+
+El workflow `.github/workflows/daily-stock-sync.yml` ejecuta la conciliación a las
+08:00 de `America/Lima` y también permite ejecución manual. Requiere crear el secret
+de repositorio `STOCK_SYNC_CONFIG_B64` con el contenido base64 del archivo TOML de
+configuración. El reporte Excel se conserva como artifact durante 30 días. Cada corrida
+también publica `registro_corrida.json` como artifact de GitHub durante 90 días, incluso
+si la conciliación falla. No se requieren permisos de escritura en BigQuery.
 
 ## Pruebas
 

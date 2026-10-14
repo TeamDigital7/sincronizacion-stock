@@ -75,10 +75,8 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
         right_on=["sitio", "variant_sku", "id_tienda_forus"],
         validate="one_to_one",
     )
-    joined["presente_erp"] = joined["_presente_erp"].fillna(False).astype(bool)
-    joined["presente_ecommerce"] = (
-        joined["_presente_ecommerce"].fillna(False).astype(bool)
-    )
+    joined["presente_erp"] = joined["_presente_erp"].eq(True)
+    joined["presente_ecommerce"] = joined["_presente_ecommerce"].eq(True)
     joined["stock_erp_sitio"] = joined["stock_erp_sitio"].fillna(0).astype(float)
     joined["stock_disponible_ecommerce"] = (
         joined["stock_disponible_ecommerce"].fillna(0).astype(float)

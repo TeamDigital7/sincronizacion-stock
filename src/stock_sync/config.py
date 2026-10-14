@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Mapping
+from typing import Any
 
 TABLE_ID = re.compile(r"^[A-Za-z0-9_-]+\.[A-Za-z0-9_]+\.[A-Za-z0-9_$-]+$")
 COLUMN_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -60,6 +61,7 @@ class BigQueryConfig:
     product_master_id_column: str = "codint_ma"
     product_master_brand_column: str = "marca_ma"
     product_master_size_column: str = "talnum_ma"
+    stock_transit_column: str = "transito"
 
 
 @dataclass(frozen=True)
@@ -82,7 +84,7 @@ class AppConfig:
     daily_refresh_time: str = "08:00"
 
     @classmethod
-    def from_mapping(cls, source: Mapping[str, Any]) -> "AppConfig":
+    def from_mapping(cls, source: Mapping[str, Any]) -> AppConfig:
         data = _plain(source)
         bq = data["bigquery"]
         stock_table = bq.get("stock_table", bq.get("table"))
@@ -195,6 +197,11 @@ class AppConfig:
                 "product_master_size_column",
             )
             or "talnum_ma",
+            stock_transit_column=_column(
+                bq.get("stock_transit_column", "transito"),
+                "stock_transit_column",
+            )
+            or "transito",
         )
         configured_site_mapping = data.get("site_mapping", {}).get("erp_to_shopify", {})
         erp_site_to_shopify_site = {
