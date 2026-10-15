@@ -8,8 +8,9 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 - Último registro ERP por `id_producto + codigo_tienda`, considerando exclusivamente
   la fecha de cierre del día anterior en `America/Lima`. Si esa fecha no existe, la
   corrida se detiene antes de consultar Shopify; la foto del año anterior se excluye.
-- Antes de seleccionar el último registro, solo se consideran filas con `transito = 0`;
-  los valores nulos o mayores a cero se excluyen.
+- Si `stock_bi` contiene duplicados para el mismo SKU-bodega y fecha, se prioriza la
+  fila con `transito = 0`. Si no existe, se conserva la fila disponible para evitar
+  eliminar completamente el stock de una bodega.
 - Relación confirmada `codigo_tienda = numbodega`.
 - Solo bodegas activas y asignadas al sitio.
 - Sitios ERP considerados: `2`, `4`, `6`, `24`, `102`, `103`.

@@ -128,10 +128,12 @@ class BigQuerySource:
               COALESCE(SAFE_CAST(reserva_ecommerce AS NUMERIC), 0) AS reserva_ecommerce,
               COALESCE(SAFE_CAST(merma AS NUMERIC), 0) AS merma,
               COALESCE(SAFE_CAST(segunda AS NUMERIC), 0) AS segunda,
+              SAFE_CAST(`{c.stock_transit_column}` AS NUMERIC) AS transito,
               ROW_NUMBER() OVER (
                 PARTITION BY TRIM(CAST(id_producto AS STRING)),
                              TRIM(CAST(codigo_tienda AS STRING))
                 ORDER BY
+                  IF(SAFE_CAST(`{c.stock_transit_column}` AS NUMERIC) = 0, 0, 1),
                   fecha_corte DESC,
                   (
                     IF(stock_tiendas IS NULL, 0, 1)
@@ -143,8 +145,7 @@ class BigQuerySource:
                   ) DESC
               ) AS row_num
             FROM `{c.stock_table}`
-            WHERE SAFE_CAST(`{c.stock_transit_column}` AS NUMERIC) = 0
-              AND (
+            WHERE (
                 @expected_stock_date IS NULL
                 OR DATE(fecha_corte) = @expected_stock_date
               )
@@ -219,7 +220,6 @@ class BigQuerySource:
         SELECT COUNT(*) AS filas
         FROM `{c.stock_table}`
         WHERE DATE(fecha_corte) = @expected_stock_date
-          AND SAFE_CAST(`{c.stock_transit_column}` AS NUMERIC) = 0
         """
         job_config = bigquery.QueryJobConfig(
             query_parameters=[

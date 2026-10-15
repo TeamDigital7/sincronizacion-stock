@@ -30,7 +30,7 @@ class FakeClient:
         return FakeQuery(self.frames.pop(0) if self.frames else None)
 
 
-def test_query_filters_transit_and_keeps_brand_rules_separated_by_site():
+def test_query_prefers_zero_transit_without_discarding_other_rows_and_separates_brands():
     config = BigQueryConfig(
         project_id="project",
         job_project_id="project",
@@ -54,7 +54,8 @@ def test_query_filters_transit_and_keeps_brand_rules_separated_by_site():
         },
     )
 
-    assert "SAFE_CAST(`transito` AS NUMERIC) = 0" in source.client.sql
+    assert "IF(SAFE_CAST(`transito` AS NUMERIC) = 0, 0, 1)" in source.client.sql
+    assert "WHERE SAFE_CAST(`transito` AS NUMERIC) = 0" not in source.client.sql
     parameters = {
         parameter.name: parameter for parameter in source.client.job_config.query_parameters
     }

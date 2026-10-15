@@ -50,10 +50,12 @@ latest_stock AS (
       COALESCE(SAFE_CAST(reserva_ecommerce AS NUMERIC), 0) AS reserva_ecommerce,
       COALESCE(SAFE_CAST(merma AS NUMERIC), 0) AS merma,
       COALESCE(SAFE_CAST(segunda AS NUMERIC), 0) AS segunda,
+      SAFE_CAST(transito AS NUMERIC) AS transito,
       ROW_NUMBER() OVER (
         PARTITION BY TRIM(CAST(id_producto AS STRING)),
                      TRIM(CAST(codigo_tienda AS STRING))
         ORDER BY
+          IF(SAFE_CAST(transito AS NUMERIC) = 0, 0, 1),
           fecha_corte DESC,
           (
             IF(stock_tiendas IS NULL, 0, 1)
@@ -65,8 +67,7 @@ latest_stock AS (
           ) DESC
       ) AS row_num
     FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_central_stock_bi`
-    WHERE SAFE_CAST(transito AS NUMERIC) = 0
-      AND DATE(fecha_corte) = DATE_SUB(CURRENT_DATE("America/Lima"), INTERVAL 1 DAY)
+    WHERE DATE(fecha_corte) = DATE_SUB(CURRENT_DATE("America/Lima"), INTERVAL 1 DAY)
   )
   WHERE row_num = 1
     AND DATE(fecha_corte) = DATE_SUB(CURRENT_DATE("America/Lima"), INTERVAL 1 DAY)
