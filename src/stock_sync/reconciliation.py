@@ -6,7 +6,7 @@ DETAIL_COLUMNS = [
     "sitio", "sitio_erp", "nombre_sitio_erp", "id_producto", "variant_sku",
     "conca", "talla", "codigo_tienda", "id_tienda_forus", "stock_erp_sitio",
     "stock_disponible_ecommerce", "diferencia_stock", "diferencia_absoluta",
-    "estado_sincronizacion", "presente_erp", "presente_ecommerce",
+    "estado_sincronizacion", "presente_ecommerce",
     "presente_catalogo_shopify",
     "fecha_corte_erp", "fecha_corte_ecommerce", "nombrebodega",
     "shopify_location_name", "shopify_variant_id", "stock_seguridad_aplicado",

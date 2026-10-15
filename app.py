@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hmac
+from pathlib import Path
 
 import streamlit as st
 
@@ -8,7 +9,9 @@ from stock_sync import StockReconciliationService
 from stock_sync.bigquery_source import BigQuerySource
 from stock_sync.config import AppConfig
 
-st.set_page_config(page_title="Sincronización de stock", page_icon="📦", layout="wide")
+st.set_page_config(page_title="eOM", page_icon="📦", layout="wide")
+
+LOGO_SVG = (Path(__file__).parent / "assets" / "eom-logo.svg").read_text(encoding="utf-8")
 
 
 def apply_design_system() -> None:
@@ -26,8 +29,9 @@ def apply_design_system() -> None:
             --ink: #171717;
             --midnight: #0a0a0a;
             --muted: #737373;
-            --blue: #2563eb;
-            --blue-dark: #1e40af;
+            --blue: #00269a;
+            --blue-dark: #001e78;
+            --cyan: #009ee2;
             --mint: #dcfce7;
         }
 
@@ -59,26 +63,24 @@ def apply_design_system() -> None:
         .brand-bar {
             display: flex;
             align-items: center;
-            gap: 10px;
             margin-bottom: 4rem;
-            font-size: 14px;
-            font-weight: 600;
         }
 
-        .brand-mark {
-            display: grid;
-            place-items: center;
-            width: 32px;
-            height: 32px;
-            color: white;
-            background: var(--midnight);
-            border-radius: 9px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
-            font-size: 16px;
+        .brand-logo {
+            display: block;
+            width: 150px;
+            line-height: 0;
         }
 
-        .brand-name { font-size: 15px; }
-        .brand-name span { color: var(--blue); }
+        .brand-logo svg { display: block; width: 100%; height: auto; }
+
+        .brand-bar.centered {
+            justify-content: center;
+            margin: 4vh auto 18px;
+            text-align: center;
+        }
+
+        .brand-bar.centered .brand-logo { width: 190px; }
 
         .eyebrow {
             display: inline-flex;
@@ -97,7 +99,7 @@ def apply_design_system() -> None:
         .eyebrow::before {
             width: 7px;
             height: 7px;
-            background: var(--blue);
+            background: var(--cyan);
             border-radius: 50%;
             content: "";
         }
@@ -121,8 +123,8 @@ def apply_design_system() -> None:
             line-height: 1.5;
         }
 
-        .login-hero { max-width: 620px; margin: 4vh auto 24px; text-align: center; }
-        .login-hero .hero-title { font-size: clamp(38px, 6vw, 48px); }
+        .login-hero { max-width: 520px; margin: 0 auto 24px; text-align: center; }
+        .login-hero .hero-title { font-size: clamp(30px, 5vw, 40px); }
         .login-hero .hero-copy { margin-left: auto; margin-right: auto; }
 
         div[data-testid="stForm"],
@@ -263,13 +265,233 @@ def apply_design_system() -> None:
     )
 
 
-def brand() -> None:
+def apply_dashboard_layout() -> None:
+    """Switch the authenticated experience to the framed dashboard layout."""
     st.markdown(
         """
-        <div class="brand-bar">
-            <span class="brand-mark">↔</span>
-            <span class="brand-name">forus <span>stock</span></span>
+        <style>
+        .stApp { background: #f3f4f6; background-image: none; }
+
+        [data-testid="stHeader"] {
+            background: transparent;
+            border-bottom: 0;
+        }
+
+        [data-testid="stMainBlockContainer"] {
+            max-width: none;
+            min-height: calc(100vh - 20px);
+            margin: 10px 10px 10px 0;
+            padding: 28px 32px 48px;
+            background: #ffffff;
+            border: 1px solid rgba(229, 231, 235, 0.9);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+
+        section[data-testid="stSidebar"] {
+            width: 270px !important;
+            min-width: 270px !important;
+            margin: 10px;
+            background: #ffffff;
+            border: 1px solid rgba(229, 231, 235, 0.9);
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+        }
+
+        section[data-testid="stSidebar"] > div {
+            background: transparent;
+        }
+
+        section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+            padding: 18px 12px;
+        }
+
+        .sidebar-brand {
+            padding: 2px 10px 18px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .sidebar-brand .brand-logo {
+            width: 112px;
+            margin-bottom: 13px;
+        }
+
+        .sidebar-product {
+            color: #0f172a;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .nav-section {
+            margin: 22px 8px 7px;
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        section[data-testid="stSidebar"] .stButton {
+            margin-bottom: 3px;
+        }
+
+        section[data-testid="stSidebar"] .stButton > button {
+            min-height: 36px;
+            justify-content: flex-start;
+            padding: 7px 10px;
+            color: #475569 !important;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 8px !important;
+            box-shadow: none;
+            font-size: 13px;
+            font-weight: 500 !important;
+            text-align: left;
+        }
+
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            color: #0f172a !important;
+            background: #f8fafc !important;
+        }
+
+        section[data-testid="stSidebar"] .stButton > button[kind="primary"] {
+            color: #3730a3 !important;
+            background: #eef2ff !important;
+            font-weight: 600 !important;
+        }
+
+        .dashboard-page-header {
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .dashboard-page-title {
+            margin: 0;
+            color: #0f172a;
+            font-size: 22px;
+            font-weight: 600;
+            line-height: 1.3;
+            letter-spacing: -0.025em;
+        }
+
+        .dashboard-page-copy {
+            max-width: 680px;
+            margin: 6px 0 0;
+            color: #64748b;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .empty-page {
+            min-height: 62vh;
+        }
+
+        @media (max-width: 700px) {
+            [data-testid="stMainBlockContainer"] {
+                min-height: auto;
+                margin: 6px;
+                padding: 22px 18px 36px;
+            }
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def brand(*, centered: bool = False) -> None:
+    alignment = " centered" if centered else ""
+    st.markdown(
+        f"""
+        <div class="brand-bar{alignment}">
+            <span class="brand-logo">{LOGO_SVG}</span>
         </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def sidebar_navigation() -> str:
+    pages = {
+        "Overview": "◎  Overview",
+        "Sincronización de Stock": "↻  Sincronización de Stock",
+        "Reasignación de pedidos": "⇄  Reasignación de pedidos",
+        "Analytics": "▥  Analytics",
+        "Configuración": "⚙  Configuración",
+    }
+    if "active_page" not in st.session_state:
+        st.session_state["active_page"] = "Sincronización de Stock"
+
+    st.sidebar.markdown(
+        f"""
+        <div class="sidebar-brand">
+            <div class="brand-logo">{LOGO_SVG}</div>
+            <div class="sidebar-product">Ecommerce Manager</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.sidebar.markdown('<p class="nav-section">General</p>', unsafe_allow_html=True)
+    if st.sidebar.button(
+        pages["Overview"],
+        key="nav_overview",
+        type="primary" if st.session_state["active_page"] == "Overview" else "tertiary",
+        use_container_width=True,
+    ):
+        st.session_state["active_page"] = "Overview"
+        st.rerun()
+
+    st.sidebar.markdown(
+        '<p class="nav-section">Operaciones ecommerce</p>',
+        unsafe_allow_html=True,
+    )
+    for page, key in (
+        ("Sincronización de Stock", "nav_stock"),
+        ("Reasignación de pedidos", "nav_orders"),
+    ):
+        if st.sidebar.button(
+            pages[page],
+            key=key,
+            type="primary" if st.session_state["active_page"] == page else "tertiary",
+            use_container_width=True,
+        ):
+            st.session_state["active_page"] = page
+            st.rerun()
+
+    st.sidebar.markdown('<p class="nav-section">Insights</p>', unsafe_allow_html=True)
+    if st.sidebar.button(
+        pages["Analytics"],
+        key="nav_analytics",
+        type="primary" if st.session_state["active_page"] == "Analytics" else "tertiary",
+        use_container_width=True,
+    ):
+        st.session_state["active_page"] = "Analytics"
+        st.rerun()
+
+    st.sidebar.markdown('<p class="nav-section">Settings</p>', unsafe_allow_html=True)
+    if st.sidebar.button(
+        pages["Configuración"],
+        key="nav_settings",
+        type="primary" if st.session_state["active_page"] == "Configuración" else "tertiary",
+        use_container_width=True,
+    ):
+        st.session_state["active_page"] = "Configuración"
+        st.rerun()
+
+    return str(st.session_state["active_page"])
+
+
+def page_header(title: str, copy: str | None = None) -> None:
+    description = f'<p class="dashboard-page-copy">{copy}</p>' if copy else ""
+    st.markdown(
+        f"""
+        <header class="dashboard-page-header">
+            <h1 class="dashboard-page-title">{title}</h1>
+            {description}
+        </header>
         """,
         unsafe_allow_html=True,
     )
@@ -281,15 +503,13 @@ apply_design_system()
 def authenticated() -> bool:
     if st.session_state.get("authenticated"):
         return True
-    brand()
+    brand(centered=True)
     st.markdown(
         """
         <div class="login-hero">
-            <p class="eyebrow">Control de inventario</p>
-            <h1 class="hero-title">Tu stock, siempre en sintonía.</h1>
+            <h1 class="hero-title">Inicia sesión en eOM</h1>
             <p class="hero-copy">
-                Compara el inventario de ERP y Shopify en un solo lugar,
-                con resultados claros y listos para actuar.
+                Accede al centro de operaciones y conciliación de inventario.
             </p>
         </div>
         """,
@@ -311,18 +531,11 @@ def authenticated() -> bool:
     return False
 
 
-if authenticated():
-    brand()
-    st.markdown(
-        """
-        <p class="eyebrow">Centro de conciliación</p>
-        <h1 class="hero-title">ERP y Shopify, en perfecto balance.</h1>
-        <p class="hero-copy">
-            Elige los sitios que quieres revisar. Compararemos ambas fuentes y
-            destacaremos las diferencias que necesitan tu atención.
-        </p>
-        """,
-        unsafe_allow_html=True,
+def render_stock_sync() -> None:
+    page_header(
+        "Sincronización de Stock",
+        "Compara el inventario del ERP con Shopify y revisa las diferencias que "
+        "necesitan atención.",
     )
     try:
         config = AppConfig.from_mapping(st.secrets)
@@ -421,3 +634,17 @@ if authenticated():
                     "en `product_master_table`:"
                 )
                 st.dataframe(diag["marcas_disponibles"], hide_index=True)
+
+
+def render_empty_page(title: str) -> None:
+    page_header(title)
+    st.markdown('<div class="empty-page"></div>', unsafe_allow_html=True)
+
+
+if authenticated():
+    apply_dashboard_layout()
+    active_page = sidebar_navigation()
+    if active_page == "Sincronización de Stock":
+        render_stock_sync()
+    else:
+        render_empty_page(active_page)

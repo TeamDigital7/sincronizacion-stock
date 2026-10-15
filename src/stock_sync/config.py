@@ -81,7 +81,7 @@ class AppConfig:
     erp_site_to_shopify_site: dict[str, str]
     brand_by_shopify_site: dict[str, tuple[str, ...]]
     timezone: str = "America/Lima"
-    daily_refresh_time: str = "08:00"
+    daily_refresh_time: str = "09:00"
 
     @classmethod
     def from_mapping(cls, source: Mapping[str, Any]) -> AppConfig:
@@ -244,7 +244,7 @@ class AppConfig:
             brand_by_shopify_site=brand_by_shopify_site,
             timezone=str(data.get("app", {}).get("timezone", "America/Lima")),
             daily_refresh_time=str(
-                data.get("app", {}).get("daily_refresh_time", "08:00")
+                data.get("app", {}).get("daily_refresh_time", "09:00")
             ),
         )
 

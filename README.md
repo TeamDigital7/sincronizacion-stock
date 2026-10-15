@@ -84,11 +84,11 @@ streamlit run app.py
 
 ## Programación diaria
 
-La zona horaria operativa es `America/Lima` (UTC-5). La actualización diaria debe
-ejecutarse a las `08:00`, equivalente a `13:00 UTC` (`0 13 * * *`).
+La zona horaria operativa es `America/Lima` (UTC-5). La actualización diaria se
+ejecuta a las `09:00`, equivalente a `14:00 UTC`.
 
 El workflow `.github/workflows/daily-stock-sync.yml` ejecuta la conciliación a las
-08:00 de `America/Lima` y también permite ejecución manual. Requiere crear el secret
+09:00 de `America/Lima` y también permite ejecución manual. Requiere crear el secret
 de repositorio `STOCK_SYNC_CONFIG_B64` con el contenido base64 del archivo TOML de
 configuración. El reporte Excel se conserva como artifact durante 30 días. Cada corrida
 también publica `registro_corrida.json` como artifact de GitHub durante 90 días, incluso

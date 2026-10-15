@@ -44,6 +44,7 @@ def test_reconcile_full_outer_and_zero_tolerance():
     )
     detail, warnings = reconcile(erp, ecommerce)
     assert warnings == []
+    assert "presente_erp" not in detail.columns
     statuses = dict(
         zip(detail["id_producto"].fillna(detail["variant_sku"]), detail["estado_sincronizacion"])
     )
