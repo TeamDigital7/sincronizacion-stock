@@ -7,6 +7,7 @@ DETAIL_COLUMNS = [
     "conca", "talla", "codigo_tienda", "id_tienda_forus", "stock_erp_sitio",
     "stock_disponible_ecommerce", "diferencia_stock", "diferencia_absoluta",
     "estado_sincronizacion", "presente_erp", "presente_ecommerce",
+    "presente_catalogo_shopify",
     "fecha_corte_erp", "fecha_corte_ecommerce", "nombrebodega",
     "shopify_location_name", "shopify_variant_id", "stock_seguridad_aplicado",
     "relacion_bodega_sitio_duplicada",
@@ -25,7 +26,11 @@ def _normalize_key(series: pd.Series) -> pd.Series:
     return normalized.str.replace(r"^(\d+)\.0$", r"\1", regex=True)
 
 
-def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+def reconcile(
+    erp: pd.DataFrame,
+    ecommerce: pd.DataFrame,
+    catalog_skus_by_site: dict[str, set[str]] | None = None,
+) -> tuple[pd.DataFrame, list[str]]:
     erp = erp.copy()
     ecommerce = ecommerce.copy()
     for frame, columns in (
@@ -75,14 +80,29 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
         right_on=["sitio", "variant_sku", "id_tienda_forus"],
         validate="one_to_one",
     )
-    joined["presente_erp"] = joined["_presente_erp"].fillna(False).astype(bool)
-    joined["presente_ecommerce"] = (
-        joined["_presente_ecommerce"].fillna(False).astype(bool)
+    joined["presente_erp"] = joined["_presente_erp"].eq(True)
+    joined["presente_ecommerce"] = joined["_presente_ecommerce"].eq(True)
+    normalized_catalog = {
+        str(site).strip(): {
+            _normalize_catalog_sku(sku) for sku in skus if str(sku).strip()
+        }
+        for site, skus in (catalog_skus_by_site or {}).items()
+    }
+    joined["presente_catalogo_shopify"] = joined.apply(
+        lambda row: (
+            _normalize_catalog_sku(row["id_producto"])
+            in normalized_catalog.get(str(row["sitio"]).strip(), set())
+            if pd.notna(row["id_producto"])
+            else bool(row["presente_ecommerce"])
+        ),
+        axis=1,
     )
-    joined["stock_erp_sitio"] = joined["stock_erp_sitio"].fillna(0).astype(float)
-    joined["stock_disponible_ecommerce"] = (
-        joined["stock_disponible_ecommerce"].fillna(0).astype(float)
-    )
+    joined["stock_erp_sitio"] = pd.to_numeric(
+        joined["stock_erp_sitio"], errors="coerce"
+    ).fillna(0.0)
+    joined["stock_disponible_ecommerce"] = pd.to_numeric(
+        joined["stock_disponible_ecommerce"], errors="coerce"
+    ).fillna(0.0)
     joined["diferencia_stock"] = (
         joined["stock_erp_sitio"] - joined["stock_disponible_ecommerce"]
     )
@@ -95,11 +115,13 @@ def reconcile(erp: pd.DataFrame, ecommerce: pd.DataFrame) -> tuple[pd.DataFrame,
             # Si Shopify sí reporta stock, el ERP no puede confirmarlo: falta data ERP.
             if row["stock_disponible_ecommerce"] == 0:
                 return "SINCRONIZADO"
-            return "SIN_DATA_ERP"
+            return "DESINCRONIZADO"
         if not row["presente_ecommerce"]:
+            if row["presente_catalogo_shopify"]:
+                return "DESINCRONIZADO"
             return "NO_CREADO"
         if row["diferencia_stock"] != 0:
-            return "DIFERENCIA_STOCK"
+            return "DESINCRONIZADO"
         return "SINCRONIZADO"
 
     joined["estado_sincronizacion"] = joined.apply(status, axis=1)
@@ -127,8 +149,8 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
             "skus_unicos": int(skus.nunique()),
             "skus_unicos_desincronizados": int(mismatch_skus.nunique()),
             "no_creado": int((group["estado_sincronizacion"] == "NO_CREADO").sum()),
-            "sin_data_erp": int(
-                (group["estado_sincronizacion"] == "SIN_DATA_ERP").sum()
+            "desincronizado": int(
+                (group["estado_sincronizacion"] == "DESINCRONIZADO").sum()
             ),
             "diferencia_absoluta_unidades": float(group["diferencia_absoluta"].sum()),
         }
@@ -136,3 +158,8 @@ def summarize(detail: pd.DataFrame) -> pd.DataFrame:
     rows = [aggregate(group, str(site)) for site, group in detail.groupby("sitio")]
     rows.append(aggregate(detail, "GLOBAL"))
     return pd.DataFrame(rows)
+
+
+def _normalize_catalog_sku(value: object) -> str:
+    text = str(value).strip()
+    return text[:-2] if text.endswith(".0") and text[:-2].isdigit() else text

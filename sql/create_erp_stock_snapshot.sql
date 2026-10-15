@@ -65,9 +65,11 @@ latest_stock AS (
           ) DESC
       ) AS row_num
     FROM `forus-analitica-prod-datalake.pe_bronze.stg_pe_central_stock_bi`
+    WHERE SAFE_CAST(transito AS NUMERIC) = 0
+      AND DATE(fecha_corte) = DATE_SUB(CURRENT_DATE("America/Lima"), INTERVAL 1 DAY)
   )
   WHERE row_num = 1
-    AND EXTRACT(YEAR FROM fecha_corte) = EXTRACT(YEAR FROM CURRENT_DATE("America/Lima"))
+    AND DATE(fecha_corte) = DATE_SUB(CURRENT_DATE("America/Lima"), INTERVAL 1 DAY)
 )
 SELECT
   ws.sitio,

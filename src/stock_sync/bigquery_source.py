@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import date
+
+import pandas as pd
 from google.cloud import bigquery
 from google.oauth2 import service_account
-import pandas as pd
 
 from .config import BigQueryConfig
 
@@ -20,7 +22,11 @@ class BigQuerySource:
             location=config.location,
         )
 
-    def fetch_erp_snapshot(self, sites: list[str] | None = None) -> pd.DataFrame:
+    def fetch_erp_snapshot(
+        self,
+        sites: list[str] | None = None,
+        expected_date: date | None = None,
+    ) -> pd.DataFrame:
         if not self.config.erp_snapshot_table:
             raise ValueError("Falta [bigquery].erp_snapshot_table para mode = 'snapshot'")
         table = self.client.get_table(self.config.erp_snapshot_table)
@@ -30,6 +36,17 @@ class BigQuerySource:
             return self._empty_erp_frame()
         if "sitio" not in frame.columns:
             raise ValueError("La tabla snapshot debe incluir la columna sitio")
+        if expected_date:
+            if "fecha_corte_erp" not in frame.columns:
+                raise ValueError("La tabla snapshot debe incluir fecha_corte_erp")
+            frame = frame[
+                pd.to_datetime(frame["fecha_corte_erp"], errors="coerce").dt.date
+                == expected_date
+            ]
+            if frame.empty:
+                raise ValueError(
+                    f"No existe stock ERP para la fecha esperada {expected_date.isoformat()}"
+                )
         frame["sitio"] = frame["sitio"].astype("string").str.strip()
         if sites:
             normalized_sites = {str(site).strip() for site in sites}
@@ -39,13 +56,23 @@ class BigQuerySource:
     def fetch_erp_stock(
         self,
         sites: list[str] | None = None,
-        allowed_brands: list[str] | None = None,
+        allowed_brands_by_site: dict[str, tuple[str, ...]] | None = None,
+        expected_date: date | None = None,
     ) -> pd.DataFrame:
         if self.config.mode == "snapshot":
-            return self.fetch_erp_snapshot(sites)
+            return self.fetch_erp_snapshot(sites, expected_date)
         c = self.config
+        if expected_date:
+            self._assert_expected_stock_date(expected_date)
         enabled_sites = list(c.enabled_erp_site_ids)
-        brands = sorted({str(b).strip().upper() for b in (allowed_brands or []) if str(b).strip()})
+        brand_pairs = sorted(
+            {
+                (str(site).strip(), str(brand).strip().upper())
+                for site, brands in (allowed_brands_by_site or {}).items()
+                for brand in brands
+                if str(site).strip() and str(brand).strip()
+            }
+        )
         warehouse_site_cte = self._warehouse_site_cte()
         product_master_join = ""
         product_master_filter = ""
@@ -54,7 +81,18 @@ class BigQuerySource:
         JOIN `{c.product_master_table}` pm
           ON TRIM(CAST(pm.{c.product_master_id_column} AS STRING)) = s.id_producto"""
             product_master_filter = f"""
-          AND (NOT @filter_brands OR UPPER(TRIM(pm.{c.product_master_brand_column})) IN UNNEST(@brands))
+          AND (
+            NOT @filter_brands
+            OR ws.sitio NOT IN UNNEST(@brand_filtered_sites)
+            OR EXISTS (
+              SELECT 1
+              FROM UNNEST(@brand_sites) AS brand_site WITH OFFSET position
+              JOIN UNNEST(@brands) AS allowed_brand WITH OFFSET brand_position
+                ON position = brand_position
+              WHERE brand_site = ws.sitio
+                AND allowed_brand = UPPER(TRIM(pm.{c.product_master_brand_column}))
+            )
+          )
           AND NOT (
             UPPER(TRIM(pm.{c.product_master_size_column})) LIKE 'K%'
             OR TRIM(pm.{c.product_master_size_column}) = '000'
@@ -105,9 +143,17 @@ class BigQuerySource:
                   ) DESC
               ) AS row_num
             FROM `{c.stock_table}`
+            WHERE SAFE_CAST(`{c.stock_transit_column}` AS NUMERIC) = 0
+              AND (
+                @expected_stock_date IS NULL
+                OR DATE(fecha_corte) = @expected_stock_date
+              )
           )
           WHERE row_num = 1
-            AND EXTRACT(YEAR FROM fecha_corte) = EXTRACT(YEAR FROM CURRENT_DATE("America/Lima"))
+            AND (
+              @expected_stock_date IS NULL
+              OR DATE(fecha_corte) = @expected_stock_date
+            )
         )
         SELECT
           ws.sitio,
@@ -143,16 +189,50 @@ class BigQuerySource:
             bigquery.ScalarQueryParameter("filter_sites", "BOOL", bool(sites)),
             bigquery.ArrayQueryParameter("sites", "STRING", sites or []),
             bigquery.ArrayQueryParameter("enabled_sites", "STRING", enabled_sites),
+            bigquery.ScalarQueryParameter(
+                "expected_stock_date", "DATE", expected_date
+            ),
         ]
         if c.product_master_table:
             query_parameters += [
-                bigquery.ScalarQueryParameter("filter_brands", "BOOL", bool(brands)),
-                bigquery.ArrayQueryParameter("brands", "STRING", brands),
+                bigquery.ScalarQueryParameter("filter_brands", "BOOL", bool(brand_pairs)),
+                bigquery.ArrayQueryParameter(
+                    "brand_filtered_sites",
+                    "STRING",
+                    sorted({site for site, _ in brand_pairs}),
+                ),
+                bigquery.ArrayQueryParameter(
+                    "brand_sites", "STRING", [site for site, _ in brand_pairs]
+                ),
+                bigquery.ArrayQueryParameter(
+                    "brands", "STRING", [brand for _, brand in brand_pairs]
+                ),
             ]
         job_config = bigquery.QueryJobConfig(
             query_parameters=query_parameters
         )
         return self.client.query(sql, job_config=job_config).result().to_dataframe()
+
+    def _assert_expected_stock_date(self, expected_date: date) -> None:
+        c = self.config
+        sql = f"""
+        SELECT COUNT(*) AS filas
+        FROM `{c.stock_table}`
+        WHERE DATE(fecha_corte) = @expected_stock_date
+          AND SAFE_CAST(`{c.stock_transit_column}` AS NUMERIC) = 0
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter(
+                    "expected_stock_date", "DATE", expected_date
+                )
+            ]
+        )
+        frame = self.client.query(sql, job_config=job_config).result().to_dataframe()
+        if frame.empty or int(frame.iloc[0]["filas"]) == 0:
+            raise ValueError(
+                f"No existe stock ERP para la fecha esperada {expected_date.isoformat()}"
+            )
 
     @staticmethod
     def _empty_erp_frame() -> pd.DataFrame:
