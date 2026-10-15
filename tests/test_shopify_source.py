@@ -84,3 +84,4 @@ def test_fetch_inventory_includes_paginated_locations():
     assert warnings == []
     assert frame["stock_disponible"].tolist() == [3, 4]
     assert frame["id_tienda_forus"].tolist() == ["001", "002"]
+    assert source.catalog_skus == {"SKU1"}

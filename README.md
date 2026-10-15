@@ -21,10 +21,10 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 - Estados de conciliación:
   - `SINCRONIZADO`: mismo stock en ambos lados, o el SKU no existe en el ERP pero
     Shopify tampoco reporta stock real (0) — no hay nada que reconciliar.
-  - `DIFERENCIA_STOCK`: existe en ambos lados con stock distinto.
-  - `NO_CREADO`: existe en el ERP pero no está creado en Shopify.
-  - `SIN_DATA_ERP`: Shopify reporta stock (> 0) para un SKU que no aparece en la
-    tabla de stock del ERP — no se puede confirmar contra el ERP.
+  - `DESINCRONIZADO`: el stock es distinto; también aplica cuando Shopify tiene stock
+    sin fila ERP o cuando el SKU existe en el catálogo Shopify pero no tiene inventario
+    para la ubicación homologada.
+  - `NO_CREADO`: existe en el ERP pero el SKU no está creado en el catálogo Shopify.
 - Detección de relaciones bodega-sitio duplicadas.
 - Filtro de marca vía tabla maestra de productos (`product_master_table`), homologando
   cada sitio Shopify a una o varias marcas ERP en `[site_mapping.shopify_to_brand]`

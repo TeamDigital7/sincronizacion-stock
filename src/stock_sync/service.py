@@ -108,12 +108,13 @@ class StockReconciliationService:
             expected_date=expected_date,
         )
         ecommerce_frames = []
+        catalog_skus_by_site: dict[str, set[str]] = {}
         warnings = []
         for name in names:
-            frame, site_warnings = ShopifySource(
-                self.config.shopify_sites[name]
-            ).fetch_inventory()
+            source = ShopifySource(self.config.shopify_sites[name])
+            frame, site_warnings = source.fetch_inventory()
             ecommerce_frames.append(frame)
+            catalog_skus_by_site[name] = source.catalog_skus
             warnings.extend(f"{name}: {warning}" for warning in site_warnings)
         ecommerce = pd.concat(ecommerce_frames, ignore_index=True)
         selected_shopify_sites = set(names)
@@ -129,7 +130,9 @@ class StockReconciliationService:
             f"Sitio ERP sin homologación hacia Shopify: {site}"
             for site in unmapped_erp_sites
         )
-        detail, reconcile_warnings = reconcile(erp, ecommerce)
+        detail, reconcile_warnings = reconcile(
+            erp, ecommerce, catalog_skus_by_site=catalog_skus_by_site
+        )
         warnings.extend(reconcile_warnings)
         summary = summarize(detail)
         completed_at = datetime.now(UTC)

@@ -66,6 +66,7 @@ class ShopifySource:
                 "Content-Type": "application/json",
             }
         )
+        self.catalog_skus: set[str] = set()
 
     def _request(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         for attempt in range(5):
@@ -153,6 +154,7 @@ class ShopifySource:
                 sku = (item.get("sku") or "").strip()
                 if not sku:
                     continue
+                self.catalog_skus.add(sku)
                 variant = item.get("variant") or {}
                 variant_id = (
                     normalize_location_id(variant["id"]) if variant.get("id") else None
