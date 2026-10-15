@@ -12,225 +12,250 @@ st.set_page_config(page_title="Sincronización de stock", page_icon="📦", layo
 
 
 def apply_design_system() -> None:
-    """Apply the warm, editorial visual language used throughout the app."""
+    """Apply the compact, border-first visual language used throughout the app."""
     st.markdown(
         """
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
         :root {
-            --flame: #fa5d00;
-            --flame-dark: #d94f00;
-            --glow: #fee3b5;
-            --ink: #1d1e1c;
-            --stone: #615f5c;
-            --driftwood: #8e8b87;
-            --bone: #c0bbb6;
-            --mist: #e8ded3;
-            --cream: #fff8f1;
-            --paper: #ffffff;
-            --warm-shadow: 6px 4px 24px rgba(250, 166, 0, 0.18);
+            --canvas: #ffffff;
+            --paper: #f5f5f5;
+            --border: #e5e5e5;
+            --border-strong: #d4d4d4;
+            --ink: #171717;
+            --midnight: #0a0a0a;
+            --muted: #737373;
+            --blue: #2563eb;
+            --blue-dark: #1e40af;
+            --mint: #dcfce7;
         }
 
         html, body, [class*="css"] {
-            font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+            font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
             color: var(--ink);
-            letter-spacing: 0.015em;
         }
 
         .stApp {
-            background:
-                radial-gradient(circle at 88% 7%, rgba(254, 227, 181, 0.65), transparent 25rem),
-                var(--cream);
+            background-color: var(--canvas);
+            background-image: radial-gradient(#e5e5e5 0.65px, transparent 0.65px);
+            background-size: 18px 18px;
         }
 
         [data-testid="stHeader"] {
-            background: rgba(255, 248, 241, 0.86);
-            border-bottom: 1px solid rgba(227, 214, 197, 0.7);
-            backdrop-filter: blur(14px);
+            background: rgba(255, 255, 255, 0.92);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
         }
 
         [data-testid="stMainBlockContainer"] {
             max-width: 1200px;
-            padding-top: 3.5rem;
-            padding-bottom: 5rem;
+            padding-top: 2rem;
+            padding-bottom: 4rem;
         }
 
         h1, h2, h3, p, label { color: var(--ink); }
-        h1, h2, h3 { letter-spacing: 0.01em !important; }
 
         .brand-bar {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 3.5rem;
-            font-size: 15px;
-            font-weight: 700;
+            gap: 10px;
+            margin-bottom: 4rem;
+            font-size: 14px;
+            font-weight: 600;
         }
 
         .brand-mark {
             display: grid;
             place-items: center;
-            width: 38px;
-            height: 38px;
+            width: 32px;
+            height: 32px;
             color: white;
-            background: var(--flame);
-            border-radius: 13px;
-            box-shadow: 0 4px 14px rgba(250, 93, 0, 0.22);
-            font-size: 20px;
+            background: var(--midnight);
+            border-radius: 9px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+            font-size: 16px;
         }
 
-        .brand-name { font-size: 16px; }
-        .brand-name span { color: var(--flame); }
+        .brand-name { font-size: 15px; }
+        .brand-name span { color: var(--blue); }
 
         .eyebrow {
-            margin: 0 0 10px;
-            color: var(--flame);
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            margin: 0 0 16px;
+            padding: 6px 11px;
+            color: var(--ink);
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .eyebrow::before {
+            width: 7px;
+            height: 7px;
+            background: var(--blue);
+            border-radius: 50%;
+            content: "";
         }
 
         .hero-title {
-            max-width: 820px;
+            max-width: 760px;
             margin: 0;
             color: var(--ink);
-            font-family: "DM Serif Display", Georgia, serif;
-            font-size: clamp(42px, 6vw, 72px);
-            font-weight: 400;
+            font-family: "Inter", ui-sans-serif, sans-serif;
+            font-size: clamp(38px, 5vw, 48px);
+            font-weight: 500;
             line-height: 1.04;
-            letter-spacing: -0.025em;
+            letter-spacing: -0.035em;
         }
 
         .hero-copy {
-            max-width: 680px;
-            margin: 18px 0 34px;
-            color: var(--stone);
-            font-size: 18px;
-            line-height: 1.55;
+            max-width: 650px;
+            margin: 16px 0 32px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.5;
         }
 
-        .login-hero { max-width: 620px; margin: 3vh auto 28px; text-align: center; }
-        .login-hero .hero-title { font-size: clamp(42px, 7vw, 68px); }
+        .login-hero { max-width: 620px; margin: 4vh auto 24px; text-align: center; }
+        .login-hero .hero-title { font-size: clamp(38px, 6vw, 48px); }
         .login-hero .hero-copy { margin-left: auto; margin-right: auto; }
 
         div[data-testid="stForm"],
         div[data-testid="stVerticalBlockBorderWrapper"] {
-            background: rgba(255, 255, 255, 0.94);
-            border: 1px solid rgba(227, 214, 197, 0.85) !important;
-            border-radius: 20px !important;
-            box-shadow: var(--warm-shadow);
+            background: var(--canvas);
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+            box-shadow: none;
         }
 
         div[data-testid="stForm"] {
             max-width: 520px;
             margin: 0 auto;
-            padding: 22px 24px 12px;
+            padding: 20px 20px 10px;
         }
 
         [data-testid="stTextInput"] input,
         [data-baseweb="select"] > div {
-            min-height: 48px;
+            min-height: 42px;
             color: var(--ink) !important;
-            background: var(--paper) !important;
-            border-color: var(--bone) !important;
-            border-radius: 16px !important;
+            background: var(--canvas) !important;
+            border-color: var(--midnight) !important;
+            border-radius: 6px !important;
         }
 
         [data-testid="stTextInput"] input:focus {
-            border-color: var(--flame) !important;
-            box-shadow: 0 0 0 3px rgba(250, 93, 0, 0.14) !important;
+            border-color: var(--blue) !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
         }
 
         .stButton > button,
         .stDownloadButton > button,
         [data-testid="stFormSubmitButton"] > button {
-            min-height: 46px;
-            padding: 0.7rem 1.35rem;
-            border: 1px solid var(--flame) !important;
-            border-radius: 16px !important;
-            font-weight: 700 !important;
-            letter-spacing: 0.015em;
-            transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+            min-height: 40px;
+            padding: 0.55rem 1rem;
+            color: var(--ink) !important;
+            background: var(--canvas) !important;
+            border: 1px solid var(--border-strong) !important;
+            border-radius: 8px !important;
+            font-size: 14px;
+            font-weight: 500 !important;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+            transition: border-color 120ms ease, background 120ms ease;
         }
 
         .stButton > button[kind="primary"],
         [data-testid="stFormSubmitButton"] > button {
             color: white !important;
-            background: var(--flame) !important;
-            box-shadow: 0 4px 12px rgba(250, 93, 0, 0.23);
+            background: var(--midnight) !important;
+            border-color: var(--midnight) !important;
         }
 
         .stButton > button:hover,
         .stDownloadButton > button:hover,
         [data-testid="stFormSubmitButton"] > button:hover {
+            color: var(--ink) !important;
+            background: var(--paper) !important;
+            border-color: var(--ink) !important;
+        }
+
+        .stButton > button[kind="primary"]:hover,
+        [data-testid="stFormSubmitButton"] > button:hover {
             color: white !important;
-            background: var(--flame-dark) !important;
-            border-color: var(--flame-dark) !important;
-            transform: translateY(-1px);
-            box-shadow: 0 7px 16px rgba(250, 93, 0, 0.22);
+            background: var(--blue-dark) !important;
+            border-color: var(--blue-dark) !important;
         }
 
         .stButton > button:disabled {
-            color: var(--driftwood) !important;
-            background: #eee7df !important;
-            border-color: #ddd2c7 !important;
+            color: #a3a3a3 !important;
+            background: var(--paper) !important;
+            border-color: var(--border) !important;
             box-shadow: none;
         }
 
         .section-heading {
-            margin: 48px 0 18px;
-            font-size: 28px;
-            font-weight: 650;
-            line-height: 1.2;
+            margin: 40px 0 14px;
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.33;
+            letter-spacing: -0.02em;
         }
 
         .run-chip {
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            margin-top: 26px;
-            padding: 8px 13px;
-            color: var(--stone);
-            background: rgba(255,255,255,.7);
-            border: 1px solid var(--mist);
-            border-radius: 999px;
-            font-size: 13px;
+            gap: 7px;
+            margin-top: 24px;
+            padding: 6px 10px;
+            color: var(--ink);
+            background: var(--mint);
+            border-radius: 9999px;
+            font-family: "JetBrains Mono", ui-monospace, monospace;
+            font-size: 12px;
+            font-weight: 500;
         }
 
         .run-chip::before {
-            width: 8px;
-            height: 8px;
-            background: var(--flame);
+            width: 7px;
+            height: 7px;
+            background: #16a34a;
             border-radius: 50%;
             content: "";
         }
 
         [data-testid="stDataFrame"] {
             overflow: hidden;
-            background: var(--paper);
-            border: 1px solid var(--mist);
-            border-radius: 20px;
-            box-shadow: 3px 3px 18px rgba(227, 214, 197, 0.5);
+            background: var(--canvas);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: none;
         }
 
         [data-testid="stExpander"] {
             overflow: hidden;
-            margin-top: 22px;
-            background: rgba(255,255,255,.72);
-            border: 1px solid var(--mist) !important;
-            border-radius: 16px !important;
+            margin-top: 20px;
+            background: var(--canvas);
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
         }
 
-        [data-testid="stAlert"] { border-radius: 16px; }
-        [data-testid="stCaptionContainer"] { color: var(--driftwood); }
+        [data-testid="stAlert"] { border-radius: 8px; }
+        [data-testid="stCaptionContainer"] { color: var(--muted); }
+
+        [data-baseweb="tag"] {
+            background: #dbeafe !important;
+            border-radius: 9999px !important;
+        }
 
         @media (max-width: 700px) {
-            [data-testid="stMainBlockContainer"] { padding-top: 2rem; }
+            [data-testid="stMainBlockContainer"] { padding-top: 1.5rem; }
             .brand-bar { margin-bottom: 2.5rem; }
-            .hero-copy { font-size: 16px; }
-            div[data-testid="stForm"] { padding: 18px 16px 8px; }
+            .hero-copy { font-size: 15px; }
+            div[data-testid="stForm"] { padding: 16px 14px 6px; }
         }
         </style>
         """,
