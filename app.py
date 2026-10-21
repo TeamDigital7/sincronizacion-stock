@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hmac
 from pathlib import Path
 
 import streamlit as st
@@ -481,6 +480,21 @@ def sidebar_navigation() -> str:
         st.session_state["active_page"] = "Configuración"
         st.rerun()
 
+    st.sidebar.divider()
+    user_name = (
+        st.user.get("name")
+        or st.user.get("preferred_username")
+        or st.user.get("email")
+        or "Usuario Microsoft"
+    )
+    st.sidebar.caption(f"Sesión iniciada como {user_name}")
+    if st.sidebar.button(
+        "Cerrar sesión",
+        key="logout",
+        use_container_width=True,
+    ):
+        st.logout()
+
     return str(st.session_state["active_page"])
 
 
@@ -501,33 +515,36 @@ apply_design_system()
 
 
 def authenticated() -> bool:
-    if st.session_state.get("authenticated"):
+    if st.user.is_logged_in:
+        username = (
+            st.user.get("preferred_username")
+            or st.user.get("email")
+            or st.user.get("name")
+            or st.user.get("sub")
+            or "unknown"
+        )
+        st.session_state["username"] = str(username)
         return True
+
     brand(centered=True)
     st.markdown(
         """
         <div class="login-hero">
             <h1 class="hero-title">Inicia sesión en eOM</h1>
             <p class="hero-copy">
-                Accede al centro de operaciones y conciliación de inventario.
+                Accede con tu cuenta corporativa al centro de operaciones y
+                conciliación de inventario.
             </p>
         </div>
         """,
         unsafe_allow_html=True,
     )
-    with st.form("login"):
-        username = st.text_input("Usuario")
-        password = st.text_input("Contraseña", type="password")
-        submitted = st.form_submit_button("Ingresar", use_container_width=True)
-    if submitted:
-        auth = st.secrets["app_auth"]
-        users = auth.get("users", {auth.get("username"): auth.get("password")})
-        expected = users.get(username)
-        if expected and hmac.compare_digest(str(password), str(expected)):
-            st.session_state["authenticated"] = True
-            st.session_state["username"] = username
-            st.rerun()
-        st.error("Credenciales incorrectas")
+    if st.button(
+        "Ingresar con Microsoft",
+        type="primary",
+        use_container_width=True,
+    ):
+        st.login("microsoft")
     return False
 
 

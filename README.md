@@ -58,6 +58,30 @@ Permisos mínimos para la cuenta de servicio:
 
 El archivo real `.streamlit/secrets.toml` no debe versionarse.
 
+## Inicio de sesión con Microsoft Entra ID
+
+La aplicación utiliza OpenID Connect mediante el soporte nativo de Streamlit. En
+Microsoft Entra ID registra una aplicación de tipo Web y agrega como URI de
+redirección `https://<dominio-de-la-app>/oauth2callback`. Para desarrollo local,
+registra también `http://localhost:8501/oauth2callback`.
+
+Configura estos valores en los secrets del entorno de Streamlit:
+
+```toml
+[auth]
+redirect_uri = "https://TU-APLICACION.streamlit.app/oauth2callback"
+cookie_secret = "VALOR_ALEATORIO_LARGO"
+
+[auth.microsoft]
+client_id = "APPLICATION_CLIENT_ID_DE_ENTRA"
+client_secret = "CLIENT_SECRET_VALUE_DE_ENTRA"
+server_metadata_url = "https://login.microsoftonline.com/DIRECTORY_TENANT_ID/v2.0/.well-known/openid-configuration"
+```
+
+En la Enterprise Application de Entra habilita `Assignment required` y asigna
+únicamente los usuarios o grupos autorizados. No guardes el secreto de cliente en
+el repositorio.
+
 ## Homologación ERP → Shopify
 
 ```toml
