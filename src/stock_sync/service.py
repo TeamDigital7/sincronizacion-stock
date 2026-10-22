@@ -94,9 +94,16 @@ class StockReconciliationService:
             for erp_site, shopify_site in site_mapping.items()
             if shopify_site in set(names)
         ]
+        unmapped_shopify_sites = sorted(set(names) - set(site_mapping.values()))
         if not erp_sites:
-            erp_sites = names
-            site_mapping.update({name: name for name in names})
+            raise ValueError(
+                "Sitios Shopify sin homologación ERP en "
+                "[site_mapping.erp_to_shopify]: " + ", ".join(unmapped_shopify_sites)
+            )
+        warnings = [
+            f"Sitio Shopify sin homologación ERP: {site}; solo se compara contra Shopify"
+            for site in unmapped_shopify_sites
+        ]
         allowed_brands_by_erp_site = {
             erp_site: self.config.brand_by_shopify_site.get(shopify_site, ())
             for erp_site, shopify_site in site_mapping.items()
@@ -109,7 +116,6 @@ class StockReconciliationService:
         )
         ecommerce_frames = []
         catalog_skus_by_site: dict[str, set[str]] = {}
-        warnings = []
         for name in names:
             source = ShopifySource(self.config.shopify_sites[name])
             frame, site_warnings = source.fetch_inventory()
@@ -122,14 +128,6 @@ class StockReconciliationService:
             erp["sitio_erp"] = erp["sitio"]
             erp["sitio"] = erp["sitio_erp"].map(site_mapping).fillna(erp["sitio_erp"])
             erp = erp[erp["sitio"].isin(selected_shopify_sites)]
-        unmapped_erp_sites = sorted(
-            set(erp.get("sitio_erp", pd.Series(dtype=str)).dropna().astype(str))
-            - set(site_mapping)
-        )
-        warnings.extend(
-            f"Sitio ERP sin homologación hacia Shopify: {site}"
-            for site in unmapped_erp_sites
-        )
         detail, reconcile_warnings = reconcile(
             erp, ecommerce, catalog_skus_by_site=catalog_skus_by_site
         )

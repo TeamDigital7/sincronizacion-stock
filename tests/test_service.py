@@ -40,3 +40,32 @@ def test_missing_yesterday_stock_stops_before_shopify(monkeypatch):
 
     assert calls["expected_date"] is not None
     assert calls["shopify"] == 0
+
+
+def test_selected_site_without_erp_mapping_fails_before_querying(monkeypatch):
+    calls = {"erp": 0}
+
+    class FakeBigQuery:
+        def __init__(self, *args):
+            pass
+
+        def fetch_site_mapping(self):
+            return pd.DataFrame()
+
+        def fetch_erp_stock(self, *args, **kwargs):
+            calls["erp"] += 1
+
+    monkeypatch.setattr("stock_sync.service.BigQuerySource", FakeBigQuery)
+    config = SimpleNamespace(
+        shopify_sites={"vans": object()},
+        erp_site_to_shopify_site={"4": "rockford"},
+        brand_by_shopify_site={},
+        bigquery=SimpleNamespace(mode="query"),
+        service_account={},
+        timezone="America/Lima",
+    )
+
+    with pytest.raises(ValueError, match="sin homologación ERP.*vans"):
+        StockReconciliationService(config).run(["vans"])
+
+    assert calls["erp"] == 0

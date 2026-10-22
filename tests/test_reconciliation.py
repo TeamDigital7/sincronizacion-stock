@@ -143,3 +143,69 @@ def test_sku_absent_from_shopify_catalog_is_not_created():
 
     assert detail.iloc[0]["estado_sincronizacion"] == "NO_CREADO"
 
+
+
+def test_duplicate_erp_rows_keep_max_instead_of_failing():
+    erp = pd.DataFrame(
+        [
+            {
+                "sitio": "rockford",
+                "sitio_erp": "4",
+                "id_producto": "SKU1",
+                "codigo_tienda": "010",
+                "stock_erp_sitio": 3,
+            },
+            {
+                "sitio": "rockford",
+                "sitio_erp": "24",
+                "id_producto": "SKU1",
+                "codigo_tienda": "010",
+                "stock_erp_sitio": 3,
+            },
+        ]
+    )
+    ecommerce = pd.DataFrame(
+        [
+            {
+                "sitio": "rockford",
+                "variant_sku": "SKU1",
+                "id_tienda_forus": "010",
+                "stock_disponible": 3,
+            }
+        ]
+    )
+
+    detail, warnings = reconcile(erp, ecommerce)
+
+    assert len(detail) == 1
+    row = detail.iloc[0]
+    assert row["stock_erp_sitio"] == 3
+    assert row["sitio_erp"] == "24, 4"
+    assert row["estado_sincronizacion"] == "SINCRONIZADO"
+    assert len(warnings) == 1 and "SKU1" in warnings[0] and "ERP" in warnings[0]
+
+
+def test_erp_zero_stock_without_shopify_inventory_is_synchronized():
+    erp = pd.DataFrame(
+        [
+            {
+                "sitio": "vans",
+                "id_producto": "EN-CATALOGO",
+                "codigo_tienda": "159",
+                "stock_erp_sitio": 0,
+            },
+            {
+                "sitio": "vans",
+                "id_producto": "NO-EXISTE",
+                "codigo_tienda": "159",
+                "stock_erp_sitio": 0,
+            },
+        ]
+    )
+    ecommerce = pd.DataFrame(
+        columns=["sitio", "variant_sku", "id_tienda_forus", "stock_disponible"]
+    )
+
+    detail, _ = reconcile(erp, ecommerce, catalog_skus_by_site={"vans": {"EN-CATALOGO"}})
+
+    assert set(detail["estado_sincronizacion"]) == {"SINCRONIZADO"}

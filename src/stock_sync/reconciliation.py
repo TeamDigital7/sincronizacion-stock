@@ -26,6 +26,42 @@ def _normalize_key(series: pd.Series) -> pd.Series:
     return normalized.str.replace(r"^(\d+)\.0$", r"\1", regex=True)
 
 
+def _deduplicate_erp(erp: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
+    """Deja una fila ERP por sitio Shopify + SKU + bodega.
+
+    Los duplicados aparecen cuando dos sitios ERP homologan al mismo sitio
+    Shopify y comparten bodega, o cuando la tabla maestra repite el producto.
+    Son la misma foto de stock repetida, por eso se conserva el máximo en vez
+    de sumar."""
+    key = ["sitio", "id_producto", "codigo_tienda"]
+    duplicated = erp.duplicated(subset=key, keep=False)
+    if not duplicated.any():
+        return erp, []
+    warnings = []
+    for (sitio, sku, tienda), group in erp[duplicated].groupby(key):
+        origen = (
+            f" (sitios ERP: {_join_unique(group['sitio_erp'])})"
+            if "sitio_erp" in group.columns
+            else ""
+        )
+        valores = _join_unique(group["stock_erp_sitio"])
+        warnings.append(
+            f"{sitio}: SKU {sku} repetido en bodega {tienda} en ERP{origen}; "
+            f"stock ERP {valores}, se conserva el máximo"
+        )
+    overrides = {
+        "stock_erp_sitio": "max",
+        "sitio_erp": _join_unique,
+        "relacion_bodega_sitio_duplicada": "any",
+    }
+    agg = {
+        column: overrides.get(column, "first")
+        for column in erp.columns
+        if column not in key
+    }
+    return erp.groupby(key, as_index=False, dropna=False).agg(agg), warnings
+
+
 def reconcile(
     erp: pd.DataFrame,
     ecommerce: pd.DataFrame,
@@ -70,6 +106,9 @@ def reconcile(
             if column in ecommerce.columns
         }
         ecommerce = ecommerce.groupby(key, as_index=False).agg(agg)
+
+    erp, erp_warnings = _deduplicate_erp(erp)
+    warnings.extend(erp_warnings)
 
     erp["_presente_erp"] = True
     ecommerce["_presente_ecommerce"] = True
@@ -117,6 +156,10 @@ def reconcile(
                 return "SINCRONIZADO"
             return "DESINCRONIZADO"
         if not row["presente_ecommerce"]:
+            # Simétrico al caso anterior: sin stock ERP no hay nada que publicar,
+            # exista o no el SKU/ubicación en Shopify.
+            if row["stock_erp_sitio"] == 0:
+                return "SINCRONIZADO"
             if row["presente_catalogo_shopify"]:
                 return "DESINCRONIZADO"
             return "NO_CREADO"
