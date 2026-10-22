@@ -55,8 +55,8 @@ latest_stock AS (
         PARTITION BY TRIM(CAST(id_producto AS STRING)),
                      TRIM(CAST(codigo_tienda AS STRING))
         ORDER BY
-          IF(SAFE_CAST(transito AS NUMERIC) = 0, 0, 1),
           fecha_corte DESC,
+          IF(SAFE_CAST(transito AS NUMERIC) = 0, 0, 1),
           (
             IF(stock_tiendas IS NULL, 0, 1)
             + IF(reserva_retail IS NULL, 0, 1)

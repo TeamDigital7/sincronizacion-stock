@@ -20,13 +20,17 @@ el inventario `available` de Shopify por SKU, sitio y ubicación.
 - Resultado mínimo cero y tolerancia de comparación igual a cero.
 - `FULL OUTER JOIN` para detectar registros exclusivos de ERP o Shopify.
 - Estados de conciliación:
-  - `SINCRONIZADO`: mismo stock en ambos lados, o el SKU no existe en el ERP pero
-    Shopify tampoco reporta stock real (0) — no hay nada que reconciliar.
+  - `SINCRONIZADO`: mismo stock en ambos lados; o el registro existe en un solo lado
+    y ese lado reporta stock 0 — no hay nada que reconciliar.
   - `DESINCRONIZADO`: el stock es distinto; también aplica cuando Shopify tiene stock
-    sin fila ERP o cuando el SKU existe en el catálogo Shopify pero no tiene inventario
-    para la ubicación homologada.
-  - `NO_CREADO`: existe en el ERP pero el SKU no está creado en el catálogo Shopify.
-- Detección de relaciones bodega-sitio duplicadas.
+    sin fila ERP o cuando el SKU con stock ERP existe en el catálogo Shopify pero no
+    tiene inventario para la ubicación homologada.
+  - `NO_CREADO`: tiene stock en el ERP pero el SKU no está creado en el catálogo Shopify.
+- Detección de relaciones bodega-sitio duplicadas. Si tras homologar sitios queda más de
+  una fila ERP por sitio Shopify + SKU + bodega, se conserva el stock máximo (no se
+  suma) y se emite una advertencia.
+- Un sitio Shopify seleccionado sin homologación ERP genera advertencia; si ninguno
+  está homologado, la corrida se detiene antes de consultar el stock ERP y Shopify.
 - Filtro de marca vía tabla maestra de productos (`product_master_table`), homologando
   cada sitio Shopify a una o varias marcas ERP en `[site_mapping.shopify_to_brand]`
   (útil cuando un mismo sitio, como Rockford, vende más de una marca).
