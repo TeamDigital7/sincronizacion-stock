@@ -106,6 +106,14 @@ Copy-Item .streamlit\secrets.example.toml .streamlit\secrets.toml
 streamlit run app.py
 ```
 
+Streamlit Community Cloud instala las dependencias desde `requirements.txt`.
+Después de modificar este archivo, reinicia la aplicación desde su panel para
+forzar la reconstrucción del entorno.
+
+La integración OIDC de Authlib con el servidor Starlette de Streamlit requiere
+también `httpx2`; se declara explícitamente para evitar errores al iniciar el
+flujo de autenticación.
+
 ## Programación diaria
 
 La zona horaria operativa es `America/Lima` (UTC-5). La actualización diaria se
