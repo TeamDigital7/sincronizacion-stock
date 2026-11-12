@@ -223,14 +223,27 @@ class AppConfig:
                 brand_by_shopify_site[shopify_key] = values
         sites = {}
         for name, raw in data.get("shopify_sites", {}).items():
+            section = f"shopify_sites.{name}"
+            if not isinstance(raw, Mapping):
+                raise TypeError(f"[{section}] debe ser una sección TOML")
+            shop_domain = str(_required(raw, "shop_domain", section)).strip()
+            admin_access_token = str(
+                _required(raw, "admin_access_token", section)
+            ).strip()
+            raw_location_map = raw.get("location_store_map", {})
+            if not isinstance(raw_location_map, Mapping):
+                raise TypeError(
+                    f"[{section}.location_store_map] debe ser una sección TOML"
+                )
             mapping = {
                 normalize_location_id(k): str(v).strip()
-                for k, v in raw.get("location_store_map", {}).items()
+                for k, v in raw_location_map.items()
+                if str(k).strip() and str(v).strip()
             }
             sites[name] = ShopifySiteConfig(
                 name=name,
-                shop_domain=str(raw["shop_domain"]).strip().removeprefix("https://").rstrip("/"),
-                admin_access_token=str(raw["admin_access_token"]),
+                shop_domain=shop_domain.removeprefix("https://").rstrip("/"),
+                admin_access_token=admin_access_token,
                 api_version=str(raw.get("api_version", "2026-04")),
                 location_store_map=mapping,
             )
