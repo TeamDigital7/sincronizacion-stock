@@ -176,6 +176,12 @@ def apply_design_system() -> None:
             border-color: var(--midnight) !important;
         }
 
+        section[data-testid="stMain"] .stButton > button[kind="primary"] *,
+        section[data-testid="stMain"] [data-testid="stBaseButton-primary"],
+        section[data-testid="stMain"] [data-testid="stBaseButton-primary"] * {
+            color: white !important;
+        }
+
         .stButton > button:hover,
         .stDownloadButton > button:hover,
         [data-testid="stFormSubmitButton"] > button:hover {
@@ -189,6 +195,12 @@ def apply_design_system() -> None:
             color: white !important;
             background: var(--blue-dark) !important;
             border-color: var(--blue-dark) !important;
+        }
+
+        section[data-testid="stMain"] .stButton > button[kind="primary"]:hover *,
+        section[data-testid="stMain"] [data-testid="stBaseButton-primary"]:hover,
+        section[data-testid="stMain"] [data-testid="stBaseButton-primary"]:hover * {
+            color: white !important;
         }
 
         .stButton > button:disabled {
