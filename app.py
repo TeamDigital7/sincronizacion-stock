@@ -210,6 +210,11 @@ def apply_design_system() -> None:
             box-shadow: none;
         }
 
+        .st-key-run_reconciliation button,
+        .st-key-run_reconciliation button * {
+            color: white !important;
+        }
+
         .section-heading {
             margin: 40px 0 14px;
             font-size: 24px;
@@ -583,6 +588,7 @@ def render_stock_sync() -> None:
 
         if st.button(
             "Ejecutar conciliación",
+            key="run_reconciliation",
             type="primary",
             disabled=not sites,
             use_container_width=True,
