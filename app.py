@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 
 import streamlit as st
@@ -8,9 +9,17 @@ from stock_sync import StockReconciliationService
 from stock_sync.bigquery_source import BigQuerySource
 from stock_sync.config import AppConfig
 
-st.set_page_config(page_title="eOM", page_icon="📦", layout="wide")
+st.set_page_config(
+    page_title="Operation Digital System",
+    page_icon="📦",
+    layout="wide",
+)
 
-LOGO_SVG = (Path(__file__).parent / "assets" / "eom-logo.svg").read_text(encoding="utf-8")
+LOGO_BYTES = (Path(__file__).parent / "assets" / "ods-logo.png").read_bytes()
+LOGO_DATA_URI = f"data:image/png;base64,{base64.b64encode(LOGO_BYTES).decode('ascii')}"
+LOGO_HTML = (
+    f'<img src="{LOGO_DATA_URI}" alt="Operation Digital System" loading="eager">'
+)
 
 
 def apply_design_system() -> None:
@@ -71,7 +80,7 @@ def apply_design_system() -> None:
             line-height: 0;
         }
 
-        .brand-logo svg { display: block; width: 100%; height: auto; }
+        .brand-logo img { display: block; width: 100%; height: auto; }
 
         .brand-bar.centered {
             justify-content: center;
@@ -422,7 +431,7 @@ def brand(*, centered: bool = False) -> None:
     st.markdown(
         f"""
         <div class="brand-bar{alignment}">
-            <span class="brand-logo">{LOGO_SVG}</span>
+            <span class="brand-logo">{LOGO_HTML}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -443,8 +452,8 @@ def sidebar_navigation() -> str:
     st.sidebar.markdown(
         f"""
         <div class="sidebar-brand">
-            <div class="brand-logo">{LOGO_SVG}</div>
-            <div class="sidebar-product">Ecommerce Manager</div>
+            <div class="brand-logo">{LOGO_HTML}</div>
+            <div class="sidebar-product">Operation Digital System</div>
         </div>
         """,
         unsafe_allow_html=True,
@@ -547,7 +556,7 @@ def authenticated() -> bool:
     st.markdown(
         """
         <div class="login-hero">
-            <h1 class="hero-title">Inicia sesión en eOM</h1>
+            <h1 class="hero-title">Inicia sesión en Operation Digital System</h1>
             <p class="hero-copy">
                 Accede con tu cuenta corporativa al centro de operaciones y
                 conciliación de inventario.

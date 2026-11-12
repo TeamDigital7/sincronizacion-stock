@@ -1,4 +1,4 @@
-# Forus Stock Sync
+# Operation Digital System
 
 Aplicación independiente para comparar el stock publicable del ERP en BigQuery con
 el inventario `available` de Shopify por SKU, sitio y ubicación.

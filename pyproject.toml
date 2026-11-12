@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "forus-stock-sync"
+name = "operation-digital-system"
 version = "0.1.0"
-description = "Conciliación de stock entre BigQuery ERP y tiendas Shopify"
+description = "Operation Digital System para conciliación de stock ERP y Shopify"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
